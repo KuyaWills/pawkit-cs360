@@ -14,3 +14,11 @@ Internal customer-service page for Pawkit, served at https://cs360.pawkit.sg (Gi
 3. The next run re-encrypts the live data. People are asked for the new passcode.
 
 Anything already published under an old passcode stays readable with that passcode: GitHub keeps superseded data commits reachable by ID. After a suspected leak, delete and recreate the repository, then publish under the new passcode.
+
+## Time off requests and approval
+
+- Staff send a request from the Time Off tab (Zoho webform "CS360 Leave Request" into the CRM module `Leave_Requests`, shown in Zoho as "Time Off Requests").
+- Zoho workflow rule "CS360 time off request email" emails the approver using the template "CS360 Time Off Request". The email has Approve and Reject buttons that link to `https://cs360.pawkit.sg/#td/<request id>/<A|R>/<approval key>`.
+- The page shows a confirm step; confirming posts the Zoho webform "CS360 Time Off Decision" into the module `Time_Off_Decisions` (administrators only).
+- `refresh.py` applies the latest decision to a request that Zoho still shows as Pending, but only when the decision carries the approval key. The key lives in the private config as `_approval_key` (keys starting with `_` are never published) and in the Zoho email template. To change it, change both.
+- A status set by hand in Zoho (Approved, Rejected, Cancelled) always wins over an email decision.

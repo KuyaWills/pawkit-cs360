@@ -174,6 +174,17 @@ section[data-panel].active{display:block}
 .lvform input,.lvform select{border-radius:10px;font-weight:400;width:100%}
 @media (max-width:520px){.lvform{grid-template-columns:1fr}}
 footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
+
+#decide{position:fixed;inset:0;z-index:50;background:radial-gradient(1200px 500px at 80% -10%,var(--mint),transparent),var(--bg);display:none;align-items:center;justify-content:center;padding:16px;overflow:auto}
+#decide .box{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:0 10px 30px rgba(0,60,55,.08);padding:26px;width:100%;max-width:400px;text-align:center}
+#decide .logo{height:40px}
+#decide h1{font-size:22px;margin:14px 0 8px}
+#decide p{color:var(--ink2);font-size:14px;margin:0 0 14px}
+#decide .who{background:var(--brand-soft);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--ink);margin:0 0 14px}
+#decide button{width:100%;padding:13px 16px;font-size:16px;font-weight:700;border-radius:12px;margin-bottom:10px;cursor:pointer}
+#decide button.yes{background:var(--good);border-color:var(--good);color:#fff}
+#decide button.no{background:var(--bad);border-color:var(--bad);color:#fff}
+#decide button.alt{background:transparent;border-color:var(--line);color:var(--ink2);font-weight:600;font-size:14px}
 </style>
 </head>
 <body>
@@ -189,6 +200,20 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <div id="err" role="alert"></div>
   </form>
 </div>
+
+<div id="decide" role="dialog" aria-live="polite"><div class="box">
+  <img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit">
+  <div id="dcBody"></div>
+  <form id="dcForm" action="https://crm.zoho.com/crm/WebForm" method="POST" accept-charset="UTF-8" style="display:none">
+    <input type="hidden" name="xnQsjsdp" value="9f566a144a11076c0950e19eb97b0ff6a02209e97d4dd03f11c2ff0273f01999">
+    <input type="hidden" name="zc_gad" value="">
+    <input type="hidden" name="xmIwtLD" value="e57cf98458ff241298ac831c62bade9ab7e7d76b0b9eebe7ca548cc62483089c0ed5f367617a3f2e5523124586ad079c">
+    <input type="hidden" name="actionType" value="Q3VzdG9tTW9kdWxlMjU=">
+    <input type="hidden" name="returnURL" value="https://cs360.pawkit.sg/#decided">
+    <input type="hidden" name="NAME"><input type="hidden" name="COBJ25CF1"><input type="hidden" name="COBJ25CF2"><input type="hidden" name="COBJ25CF3">
+    <input type="text" name="aG9uZXlwb3Q" value="" tabindex="-1" autocomplete="off">
+  </form>
+</div></div>
 
 <div id="app">
  <div class="brandbar"><div class="wrap" style="padding-top:12px;padding-bottom:12px"><header style="margin:0">
@@ -209,7 +234,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <button role="tab" data-tab="tasks">Tasks</button>
     <button role="tab" data-tab="orders">Orders</button>
     <button role="tab" data-tab="xero">Xero</button>
-    <button role="tab" data-tab="leave">Leave</button>
+    <button role="tab" data-tab="leave">Time Off</button>
     <button role="tab" data-tab="complaints">Complaints</button>
   </nav>
 
@@ -375,8 +400,8 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <div class="tiles" id="lvTiles"></div>
     <div class="two">
       <div class="card">
-        <h2>Request leave</h2>
-        <p class="sub">Goes to Charlene for approval. You come back to this page after sending; the request shows here within a few minutes.</p>
+        <h2>Request time off</h2>
+        <p class="sub">Charlene gets an email and approves or rejects it from there. You come back to this page after sending; the request shows here within a few minutes.</p>
         <form id="lvForm" class="lvform" action="https://crm.zoho.com/crm/WebForm" method="POST" accept-charset="UTF-8">
           <input type="hidden" name="xnQsjsdp" value="a898f70c56834b73efcda8c8488c89350ded402eaf53868b94ba79ed2e7c8e59">
           <input type="hidden" name="zc_gad" value="">
@@ -399,18 +424,18 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
       </div>
       <div class="card">
         <h2>Waiting for approval</h2>
-        <p class="sub">Charlene approves or rejects in Zoho CRM: open the request, set Leave Status, save. Only administrators can change the status.</p>
+        <p class="sub">Each request is emailed to Charlene with Approve and Reject buttons. Her choice shows here a few minutes after she taps.</p>
         <div class="tablewrap"><table id="lvPending"></table></div>
       </div>
     </div>
     <div class="card">
-      <h2 id="lvTitle">Leave requests</h2>
+      <h2 id="lvTitle">Time off requests</h2>
       <p class="sub filternote" id="lvNote"></p>
       <div class="tablewrap"><table id="leave"></table></div>
     </div>
     <div class="card">
-      <h2>Off and leave this week</h2>
-      <p class="sub">Rest days from the schedule tracker, with approved leave added.</p>
+      <h2>Rest days and time off this week</h2>
+      <p class="sub">Rest days from the schedule tracker, with approved time off added.</p>
       <div class="tablewrap"><table id="offWeek"></table></div>
     </div>
   </section>
@@ -509,8 +534,44 @@ const t12=t=>{let [h,m]=t.split(':').map(Number);const ap=h>=12?'pm':'am';h=h%12
 const cnt=(arr,f)=>{const o={};arr.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+1;});return o;};
 
 let D, CFG;
+// ---------- time off decision, opened from the buttons in the approver's email ----------
+// Link form: #td/<request id>/<A|R>/<approval key>. Nothing is sent until the button on this page is pressed.
+let DECIDE=null;
+(function(){
+  const h=location.hash, box=$('decide'), body=$('dcBody'), ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
+  const close=()=>{ box.style.display='none'; DECIDE=null; try{history.replaceState(null,'','#leave')}catch(e){} location.hash='#leave'; };
+  const closeBtn='<button class="alt" type="button" id="dcClose">Open the dashboard</button>';
+  const wire=()=>{ const c=$('dcClose'); if(c) c.addEventListener('click',close); };
+  if(h==='#decided'){
+    const d=ss.get('cs360_td')||''; box.style.display='flex';
+    body.innerHTML='<h1>'+(d==='Approved'?'Approved. Thank you.':d==='Rejected'?'Rejected. Thank you.':'Your decision is recorded.')+'</h1><p>The dashboard and the schedule update within a few minutes. You can close this page.</p>'+closeBtn; wire(); return;
+  }
+  if(!h.startsWith('#td/')) return;
+  const [id,dc,key]=h.slice(4).split('/'); box.style.display='flex';
+  try{history.replaceState(null,'','#td')}catch(e){}            // keep the key out of the address bar and history
+  if(!/^\d{8,25}$/.test(id||'')||!/^[AR]$/.test(dc||'')||!/^[\w-]{16,80}$/.test(key||'')){
+    body.innerHTML='<h1>This link did not come through properly</h1><p>Please try the button in the email again, or ask Vince to record your decision.</p>'+closeBtn; wire(); return;
+  }
+  DECIDE={id,d:dc==='A'?'Approved':'Rejected',key};
+  const draw=()=>{ const ap=DECIDE.d==='Approved';
+    body.innerHTML='<h1>'+(ap?'Approve':'Reject')+' this time off request?</h1><div class="who" id="dcWho" style="display:none"></div><p>Press the button to confirm. Nothing else to fill in.</p>'+
+      '<button type="button" id="dcGo" class="'+(ap?'yes':'no')+'">'+(ap?'Yes, approve':'Yes, reject')+'</button><button type="button" id="dcSwap" class="alt">'+(ap?'Reject instead':'Approve instead')+'</button>';
+    $('dcGo').addEventListener('click',()=>{ const f=$('dcForm'); f.NAME.value=DECIDE.d+' '+DECIDE.id; f.COBJ25CF1.value=DECIDE.id; f.COBJ25CF2.value=DECIDE.d; f.COBJ25CF3.value=DECIDE.key;
+      ss.set('cs360_td',DECIDE.d); $('dcGo').disabled=true; $('dcGo').textContent='Saving…'; f.submit(); });
+    $('dcSwap').addEventListener('click',()=>{ DECIDE.d=ap?'Rejected':'Approved'; draw(); });
+    decideDetails(); };
+  window.decideDraw=draw; draw();
+})();
+// once the dashboard data is open on this device, show whose request it is
+function decideDetails(){
+  const el=$('dcWho'); if(!el||!DECIDE||typeof D==='undefined'||!D||!D.leave) return;
+  const l=D.leave.find(x=>x.id===DECIDE.id); if(!l) return;
+  el.style.display='block';
+  el.innerHTML='<b>'+esc(l.name||'')+'</b> · '+esc(l.type||'')+'<br>'+esc(l.from===l.to||!l.to?fmtDay(l.from):fmtDay(l.from)+' to '+fmtDay(l.to))+(l.status!=='Pending'?'<br>Already '+esc(String(l.status).toLowerCase())+(l.by?' by '+esc(l.by):'')+'. Confirming again replaces an email decision.':'');
+}
+
 function init(data){
-  D=data; CFG=data.config; applyLeave();
+  D=data; CFG=data.config; applyLeave(); decideDetails();
   const days=Object.keys(D.wa).sort();
   const today=sgNow().day;
   const sel=$('day');
@@ -606,7 +667,7 @@ async function pullLiveOnce(){
   }
 }
 
-// approved leave replaces the shift code on the schedule for those days
+// approved time off replaces the shift code on the schedule for those days
 function applyLeave(){
   (D.leave||[]).filter(l=>l.status==='Approved'&&l.name&&l.from).forEach(l=>{
     for(let d=l.from, n=0; d<=(l.to||l.from)&&n<120; d=addDays(d,1), n++){ const r=CFG.roster&&CFG.roster[d]; if(r&&(l.name in r)) r[l.name]=l.type==='Sick leave'?'SICK':'LEAVE'; }
@@ -640,7 +701,7 @@ function render(day){
       if(!nowOn.length && now.min>=toMin('09:00') && now.min<toMin('22:00')) flags.push(['bad','No human agent is on shift right now.']);
     }
   } else flags.push(['warn','No schedule for this day in the tracker yet.']);
-  { const np=(D.leave||[]).filter(l=>l.status==='Pending').length; if(np) flags.push(['warn',np+' leave request'+(np===1?'':'s')+' waiting for Charlene\'s approval.']); }
+  { const np=(D.leave||[]).filter(l=>l.status==='Pending').length; if(np) flags.push(['warn',np+' time off request'+(np===1?'':'s')+' waiting for Charlene\'s approval.']); }
   if(openComp.length) flags.push(['bad',`${openComp.length} complaint${openComp.length===1?'':'s'} not closed in Zoho CRM.`]);
   if((vs['To be Rescheduled']||0)+(vs['Pending Provider Time Slot']||0)+(vs['Pending Owner Confirmation']||0)) flags.push(['warn',`${(vs['To be Rescheduled']||0)+(vs['Pending Provider Time Slot']||0)+(vs['Pending Owner Confirmation']||0)} visit${vis.length===1?'':'s'} on this day still pending or to be rescheduled.`]);
   $('flags').innerHTML=flags.map(([k,t])=>`<div class="flag ${k}">${esc(t)}</div>`).join('');
@@ -687,10 +748,10 @@ function render(day){
     const nd=l=>l.from&&l.to?Math.round((dparts(l.to)-dparts(l.from))/864e5)+1:1;
     const pend=L.filter(l=>l.status==='Pending'), appr=L.filter(l=>l.status==='Approved'), upc=appr.filter(l=>(l.to||l.from)>=td), onNow=appr.filter(l=>l.from<=td&&(l.to||l.from)>=td);
     const rng=l=>esc(fmtDay(l.from))+(l.to&&l.to!==l.from?' to '+esc(fmtDay(l.to)):'')+' <span class="muted">('+nd(l)+(nd(l)===1?' day':' days')+')</span>';
-    $('lvTiles').innerHTML=tile('Waiting for approval',pend.length,'Charlene decides in Zoho','lv:Pending')+tile('On leave today',onNow.length,onNow.map(l=>l.name).join(', ')||fmtDay(td),'lv:today')+tile('Approved, upcoming',upc.length,'today onwards','lv:upcoming')+tile('All requests',L.length,D.leave?'':'not loaded yet','lv:all');
+    $('lvTiles').innerHTML=tile('Waiting for approval',pend.length,'Charlene decides by email','lv:Pending')+tile('Off today, approved',onNow.length,onNow.map(l=>l.name).join(', ')||fmtDay(td),'lv:today')+tile('Approved, upcoming',upc.length,'today onwards','lv:upcoming')+tile('All requests',L.length,D.leave?'':'not loaded yet','lv:all');
     $('lvPending').innerHTML=pend.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Cover</th><th>Asked</th><th></th></tr>'+pend.sort((a,b)=>(a.from||'').localeCompare(b.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}</td><td>${rng(l)}</td><td class="muted">${esc(l.cover||'')}</td><td class="muted">${l.asked?esc(fmtDay(dayOf(l.asked))):''}</td><td style="white-space:nowrap">${link(l.id)}</td></tr>`).join(''):'<tr><td class="muted">Nothing waiting.</td></tr>';
     const k=(ACT_ON.lv||'lv:all').split(':')[1], V=k==='Pending'?pend:k==='today'?onNow:k==='upcoming'?upc:L;
-    $('lvTitle').textContent=({Pending:'Requests waiting for approval',today:'On leave today',upcoming:'Approved leave, today onwards',all:'All leave requests'})[k]+' ('+V.length+')';
+    $('lvTitle').textContent=({Pending:'Requests waiting for approval',today:'Off today, approved',upcoming:'Approved time off, today onwards',all:'All time off requests'})[k]+' ('+V.length+')';
     $('lvNote').innerHTML=k==='all'?'':'<a href="#leave" data-clear="lv">show all requests</a>';
     const pill=st=>`<span class="pill ${st==='Approved'?'on':st==='Rejected'?'bad':st==='Pending'?'warn':''}">${esc(st)}</span>`;
     $('leave').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
@@ -800,7 +861,7 @@ function render(day){
   $('xPay').innerHTML='<tr><th>Payment method</th><th class="num">Visits</th><th class="num">Marked paid</th></tr>'+Object.keys(payC).sort((a,b)=>payC[b]-payC[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${payC[k]}</td><td class="num">${payPaid[k]||0}</td></tr>`).join('');
   $('xStockSub').textContent='Xero Items in Zoho CRM, last synced '+(sync?fmtDay(dayOf(sync))+' '+t12(timeOf(sync)):'(unknown)')+'. Items at zero include services that carry no stock.';
   renderStock();
-  $('foot').textContent='Sources: Zoho CRM (Booking, Woztell logs, Complaints, Tasks, Order Processing, Xero Items, Leave Requests) and the Pawkit CS Team Schedule Tracker. Times are Singapore time. Snapshot taken '+D.generated.replace('T',' ').slice(0,16)+' SGT.';
+  $('foot').textContent='Sources: Zoho CRM (Booking, Woztell logs, Complaints, Tasks, Order Processing, Xero Items, Time Off Requests) and the Pawkit CS Team Schedule Tracker. Times are Singapore time. Snapshot taken '+D.generated.replace('T',' ').slice(0,16)+' SGT.';
 }
 
 

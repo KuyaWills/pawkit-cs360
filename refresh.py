@@ -6,6 +6,7 @@ Same data shape as the first browser snapshot, so build.py works unchanged.
 WhatsApp counts for older days are cached in raw/wa_cache.json; today and yesterday
 are re-counted every run, older days once an hour, to keep API use low.
 """
+import hmac
 import calendar, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -213,7 +214,7 @@ def main():
               "up": i.get("Unit_Price"), "cp": i.get("Cost_Price"), "sync": i.get("Last_Synced")}
              for i in z.all("select Name, Item_Code, Qty_On_Hand, Reserved_Qty, Unit_Price, Cost_Price, Last_Synced from Xero_Items where id is not null")]
 
-    # leave requests (custom module Leave_Requests; the reason stays in Zoho, it is not published)
+    # time off requests (custom module Leave_Requests, shown in Zoho as "Time Off Requests"; the reason stays in Zoho, it is not published)
     try:
         lv = z.all("select Team_Member, Leave_Type, From_Date, To_Date, Cover_Arranged, Leave_Status, Decision_Note, Created_Time, Modified_By, Modified_Time from Leave_Requests where id is not null")
     except SystemExit as e:
@@ -223,6 +224,27 @@ def main():
               "cover": r.get("Cover_Arranged"), "status": r.get("Leave_Status") or "Pending", "note": r.get("Decision_Note"),
               "asked": r.get("Created_Time"), "by": nm(r.get("Modified_By")) if (r.get("Leave_Status") in ("Approved", "Rejected")) else None,
               "when": r.get("Modified_Time")} for r in lv]
+
+    # decisions made from the buttons in the approver's email (module Time_Off_Decisions, written by the page's
+    # confirm step). A decision counts only with the private approval key, and only while Zoho still says Pending.
+    if leave:
+        try:
+            with open(os.path.expanduser("~/.config/pawkit-cs360/config.json")) as f:
+                pc = json.load(f)
+        except (OSError, ValueError):
+            pc = {}
+        akey = pc.get("_approval_key")
+        dec = []
+        if akey:
+            try:
+                dec = z.all("select Request_ID, Decision, Approval_Key, Created_Time from Time_Off_Decisions where id is not null")
+            except SystemExit as e:
+                print("WARNING time off decisions could not be read:", str(e)[:120])
+        byid = {l["id"]: l for l in leave if l["status"] == "Pending"}
+        for d in sorted(dec, key=lambda d: d.get("Created_Time") or ""):
+            l = byid.get((d.get("Request_ID") or "").strip())
+            if l and d.get("Decision") in ("Approved", "Rejected") and hmac.compare_digest(str(d.get("Approval_Key") or ""), akey):
+                l.update(status=d["Decision"], by="%s (by email)" % pc.get("_approver", "Approver"), when=d.get("Created_Time"))
 
     s30 = (today - timedelta(days=30)).isoformat()
     inv = [{"d": b.get("Date_Time"), "s": b.get("Booking_Status"), "inv": b.get("Invoice_Status"), "po": b.get("Paid_On"),
