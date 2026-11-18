@@ -45,6 +45,7 @@ button:disabled,input:disabled{opacity:.5;cursor:default}
 .tile .k{color:var(--ink2);font-size:13px}
 .tile .v{font-size:30px;font-weight:900;color:var(--head);letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
 .tile .d{color:var(--ink3);font-size:12.5px;margin-top:2px}
+.tile .d b{color:var(--head);font-weight:800}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:820px){.two{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -1084,7 +1085,7 @@ function renderBookings(day){
   else { for(let d=R.from; d<=R.to && d<=now.day; d=addDays(d,1)) if(d>=dataFrom) cdays.push(d); }
   const nDays=Math.max(1,(isDay?1:cdays.length));
   const upcoming=D.visits.filter(r=>dayOf(r.d)>now.day && r.s!=='Cancelled');
-  const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'').replace(/\$[\d,]+/g,m=>'<b>'+m+'</b>')}</div></div>`;
   const NOT_REAL=['New enquiry','Not fulfilled','Archive'], HIDE_BY=CFG.hide_by||[];
   const real=r=>!NOT_REAL.includes(r.s)&&!HIDE_BY.includes(r.by);
   $('byPersonNote').textContent=CFG.by_person_note||'';
