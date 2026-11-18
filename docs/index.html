@@ -650,8 +650,8 @@ function init(data){
   const TABS=[...document.querySelectorAll('#tabs button')];
   // Two main tabs are groups with sub-tabs. The old links (#schedule, #leave, #whatsapp, #tasks, #complaints)
   // open the matching sub-tab, and each group remembers the sub-tab last opened.
-  const GROUPS={workforce:[['schedule','Schedule'],['leave','Time Off']], service:[['tasks','Tasks'],['whatsapp','WhatsApp'],['complaints','Complaints']]};
-  const SUB={workforce:'schedule',service:'tasks'};
+  const GROUPS={workforce:[['schedule','Schedule'],['leave','Time Off']], service:[['whatsapp','WhatsApp Inquiries'],['tasks','Agent Tasks'],['complaints','Customer Complaints']]};
+  const SUB={workforce:'schedule',service:'whatsapp'};
   const groupOf=p=>Object.keys(GROUPS).find(g=>GROUPS[g].some(x=>x[0]===p));
   const showTab=t=>{ const g0=groupOf(t); if(g0){ SUB[g0]=t; t=g0; } else if(!GROUPS[t]&&!TABS.some(b=>b.dataset.tab===t)) t='overview';
     const grp=GROUPS[t], panel=grp?SUB[t]:t, bar=$('wfTabs');
