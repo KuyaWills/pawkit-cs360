@@ -415,7 +415,8 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const KEY='pawkit-cs360-pw';
-const LIVE_URL='https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/data/data.json';
+const LIVE_API='https://api.github.com/repos/pawslyOps/pawkit-cs360/contents/data.json?ref=data';  // fresh (60 s cache), 60 requests/hour per network
+const LIVE_URL='https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/data/data.json';          // fallback: cached up to 5 minutes
 let PW=null;
 const store={get(){try{return localStorage.getItem(KEY)}catch(e){return null}},set(v){try{localStorage.setItem(KEY,v)}catch(e){}},del(){try{localStorage.removeItem(KEY)}catch(e){}}};
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
@@ -472,7 +473,8 @@ function init(data){
   $('xSearch').addEventListener('input',renderStock); $('cpSearch').addEventListener('input',renderComplaints); document.querySelectorAll('#bkRange button').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.r))); $('bkDate').addEventListener('change',e=>{if(e.target.value){BK_DAY=e.target.value; renderBookings(BK_DAY);}}); $('bkPrev').addEventListener('click',()=>bkStep(-1)); $('bkNext').addEventListener('click',()=>bkStep(1)); $('bkToday').addEventListener('click',()=>{BK_DAY=sgNow().day; renderBookings(BK_DAY);}); $('tkSearch').addEventListener('input',renderBoard); $('tkOwner').addEventListener('change',renderBoard); $('cpFilter').addEventListener('change',()=>{renderComplaints(); document.querySelectorAll('#cpTiles .tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===$('cpFilter').value));}); $('xFilter').addEventListener('change',renderStock);
   showUpdated();
   try{ render(sel.value); }
-  finally{ pullLive(); setInterval(pullLive,5*60*1000); setInterval(showUpdated,60*1000); }
+  finally{ pullLive(); setInterval(showUpdated,60*1000);
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-new Date(D.generated).getTime()>6.5*60e3) pullLive(); }); }
 }
 function showUpdated(){
   const g=new Date(D.generated), mins=Math.round((Date.now()-g)/60000);
@@ -480,14 +482,34 @@ function showUpdated(){
   const el=$('updated'); el.textContent=(mins<=12?'● Live · ':'')+'Updated '+at+' SGT'+(mins>12?' ('+(mins<120?mins+' min':Math.round(mins/60)+' h')+' ago)':'');
   el.style.color=mins<=12?'var(--good)':mins>60?'var(--warn)':'';
 }
-let USER_PICKED=false;
-async function pullLive(){
-  let N;
+let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null;
+async function fetchLive(){
   try{
-    const r=await fetch(LIVE_URL+'?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
-    N=await decrypt(PW,await r.json());
-  }catch(e){ console.warn('live update skipped',e); return; }
-  if(N.generated<=D.generated) return;
+    const r=await fetch(LIVE_API,{headers:{Accept:'application/vnd.github.raw'},cache:'no-store'});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  const r=await fetch(LIVE_URL+'?t='+Date.now(),{cache:'no-store'});
+  if(!r.ok) throw new Error('live data HTTP '+r.status);
+  return await r.json();
+}
+// The Mac publishes every 5 minutes. Check again shortly after the next publish is due;
+// if it is late (Mac asleep or offline), retry each minute a few times, then every 5 minutes.
+function scheduleNext(){
+  clearTimeout(POLL_TIMER);
+  let wait=new Date(D.generated).getTime()+390e3-Date.now();
+  if(!(wait>=15e3)) wait = MISSES<4 ? 60e3 : 5*60e3;
+  POLL_TIMER=setTimeout(pullLive,Math.min(wait,7*60e3));
+}
+async function pullLive(){
+  if(PULLING) return; PULLING=true;
+  try{ await pullLiveOnce(); } finally{ PULLING=false; scheduleNext(); }
+}
+async function pullLiveOnce(){
+  let N;
+  try{ N=await decrypt(PW,await fetchLive()); }
+  catch(e){ console.warn('live update skipped',e); MISSES++; return; }
+  if(N.generated<=D.generated){ MISSES++; return; }
+  MISSES=0;
   const prevD=D, prevC=CFG, sel=$('day'), cur=sel.value, prevHTML=sel.innerHTML, today=sgNow().day;
   try{
     D=N; CFG=N.config;
