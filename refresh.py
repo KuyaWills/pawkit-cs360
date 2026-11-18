@@ -192,8 +192,8 @@ def main():
     comp = [{"n": c.get("Name"), "cd": c.get("Complaint_Date"), "c": c.get("Created_Time"), "s": c.get("Complaint_Status"),
              "pr": c.get("Priority"), "cat": c.get("Complaint_Category"), "p": c.get("Provider.Name"), "f": c.get("Follow_up_Date"),
              "rf": c.get("Refund_Required"), "ra": c.get("Refund_Amount"),
-             "desc": " ".join((c.get("Complaint_Description") or "").split())[:400], "res": " ".join((c.get("Resolution") or "").split())[:250]}
-            for c in z.all("select Name, Complaint_Date, Created_Time, Complaint_Status, Priority, Complaint_Category, Provider.Name, Follow_up_Date, Refund_Required, Refund_Amount, Complaint_Description, Resolution from Complaints where id is not null")]
+             "o": nm(c.get("Owner")), "desc": " ".join((c.get("Complaint_Description") or "").split())[:400], "res": " ".join((c.get("Resolution") or "").split())[:250]}
+            for c in z.all("select Name, Owner, Complaint_Date, Created_Time, Complaint_Status, Priority, Complaint_Category, Provider.Name, Follow_up_Date, Refund_Required, Refund_Amount, Complaint_Description, Resolution from Complaints where id is not null")]
 
     tasks = [{"sub": t.get("Subject"), "s": t.get("Status"), "pr": t.get("Priority"), "due": t.get("Due_Date"), "own": nm(t.get("Owner")),
               "by": nm(t.get("Created_By")), "type": t.get("Task_Type"), "svc": t.get("Service_Type"), "ho": t.get("Handover_To"),

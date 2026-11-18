@@ -432,6 +432,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <div class="card">
       <h2 id="lvTitle">Time off requests</h2>
       <p class="sub filternote" id="lvNote"></p>
+      <p class="sub" id="pbNote"></p>
       <div class="tablewrap"><table id="leave"></table></div>
     </div>
     <div class="card">
@@ -680,7 +681,7 @@ async function pullLiveOnce(){
 // approved time off replaces the shift code on the schedule for those days
 function applyLeave(){
   (D.leave||[]).filter(l=>l.status==='Approved'&&l.name&&l.from).forEach(l=>{
-    for(let d=l.from, n=0; d<=(l.to||l.from)&&n<120; d=addDays(d,1), n++){ const r=CFG.roster&&CFG.roster[d]; if(r&&(l.name in r)) r[l.name]=l.type==='Sick leave'?'SICK':'LEAVE'; }
+    for(let d=l.from, n=0; d<=(l.to||l.from)&&n<120; d=addDays(d,1), n++){ const r=CFG.roster&&CFG.roster[d]; if(r&&(l.name in r)) r[l.name]=/^(Sick|Outpatient|Hospitali[sz]ation)/i.test(l.type||'')?'SICK':'LEAVE'; }
   });
 }
 function shiftHours(code){const c=(CFG.shift_codes||{})[code];return (c&&c.hours)||[];}
@@ -759,12 +760,13 @@ function render(day){
     const pend=L.filter(l=>l.status==='Pending'), appr=L.filter(l=>l.status==='Approved'), upc=appr.filter(l=>(l.to||l.from)>=td), onNow=appr.filter(l=>l.from<=td&&(l.to||l.from)>=td);
     const rng=l=>esc(fmtDay(l.from))+(l.to&&l.to!==l.from?' to '+esc(fmtDay(l.to)):'')+' <span class="muted">('+nd(l)+(nd(l)===1?' day':' days')+')</span>';
     $('lvTiles').innerHTML=tile('Waiting for approval',pend.length,'Charlene decides by email','lv:Pending')+tile('Off today, approved',onNow.length,onNow.map(l=>l.name).join(', ')||fmtDay(td),'lv:today')+tile('Approved, upcoming',upc.length,'today onwards','lv:upcoming')+tile('All requests',L.length,D.leave?'':'not loaded yet','lv:all');
-    $('lvPending').innerHTML=pend.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Cover</th><th>Asked</th><th></th></tr>'+pend.sort((a,b)=>(a.from||'').localeCompare(b.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td class="muted">${esc(l.cover||'')}</td><td class="muted">${l.asked?esc(fmtDay(dayOf(l.asked))):''}</td><td style="white-space:nowrap">${link(l.id)}</td></tr>`).join(''):'<tr><td class="muted">Nothing waiting.</td></tr>';
+    $('lvPending').innerHTML=pend.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Cover</th><th>Asked</th><th></th></tr>'+pend.sort((a,b)=>(a.from||'').localeCompare(b.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td class="muted">${esc(l.cover||'')}</td><td class="muted">${l.asked?esc(fmtDay(dayOf(l.asked))):''}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):'<tr><td class="muted">Nothing waiting.</td></tr>';
     const k=(ACT_ON.lv||'lv:all').split(':')[1], V=k==='Pending'?pend:k==='today'?onNow:k==='upcoming'?upc:L;
+    $('pbNote').textContent=D.payboy_synced?'Includes approved leave copied from Payboy on '+fmtDay(D.payboy_synced)+'. Leave approved in Payboy after that day is not here until it is copied again.':'';
     $('lvTitle').textContent=({Pending:'Requests waiting for approval',today:'Off today, approved',upcoming:'Approved time off, today onwards',all:'All time off requests'})[k]+' ('+V.length+')';
     $('lvNote').innerHTML=k==='all'?'':'<a href="#leave" data-clear="lv">show all requests</a>';
     const pill=st=>`<span class="pill ${st==='Approved'?'on':st==='Rejected'?'bad':st==='Pending'?'warn':''}">${esc(st)}</span>`;
-    $('leave').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
+    $('leave').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
     const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.map(p=>`<option>${esc(p.name)}</option>`).join('');
     if(!$('lvFrom').min){ $('lvFrom').min=addDays(td,-14); $('lvTo').min=addDays(td,-14); }
   }
@@ -895,12 +897,12 @@ function renderComplaints(){
     if(f==='noshow'&&c.cat!=='No Show')return false;
     if(f==='refund'&&!c.rf)return false;
     const sm=SUM[c.n]||{};
-    return !q||[c.n,c.p,c.cat,sm.issue,sm.outcome,c.desc,c.res].join(' ').toLowerCase().includes(q);
+    return !q||[c.n,c.p,c.cat,c.o,sm.issue,sm.outcome,c.desc,c.res].join(' ').toLowerCase().includes(q);
   }).sort((a,b)=>cDay(b).localeCompare(cDay(a))||b.n.localeCompare(a.n));
   const st=c=>['Resolved','Closed'].includes(c.s)?`<span class="pill">${esc(c.s)}</span>`:`<span class="pill bad">${esc(c.s||'No status')}</span>`;
-  $('comp').innerHTML='<tr><th>No.</th><th>Date</th><th>Provider</th><th>Category</th><th style="min-width:260px">Issue</th><th style="min-width:200px">Outcome</th><th>Status</th></tr>'+(rows.length?rows.map(c=>{
+  $('comp').innerHTML='<tr><th>No.</th><th>Date</th><th>Provider</th><th>Category</th><th>Owner</th><th style="min-width:260px">Issue</th><th style="min-width:200px">Outcome</th><th>Status</th></tr>'+(rows.length?rows.map(c=>{
     const sm=SUM[c.n]||{}; const issue=sm.issue||short(c.desc)||'No description in Zoho'; const out=sm.outcome||short(c.res)||'No outcome recorded';
-    return `<tr><td style="white-space:nowrap">${esc(c.n)}</td><td style="white-space:nowrap">${cDay(c)?esc(fmtDay(cDay(c))):''}</td><td>${esc(c.p||'')}</td><td class="muted">${esc(c.cat||'No category')}</td><td title="${esc(c.desc||'')}">${esc(issue)}${sm.issue?'':' <span class="pill">from Zoho text</span>'}</td><td class="muted" title="${esc(c.res||'')}">${esc(out)}${c.rf?' <span class="pill warn">refund $'+esc(c.ra||'')+'</span>':''}</td><td>${st(c)}</td></tr>`;}).join(''):'<tr><td colspan="7" class="muted">No complaints match.</td></tr>');
+    return `<tr><td style="white-space:nowrap">${esc(c.n)}</td><td style="white-space:nowrap">${cDay(c)?esc(fmtDay(cDay(c))):''}</td><td>${esc(c.p||'')}</td><td class="muted">${esc(c.cat||'No category')}</td><td style="white-space:nowrap">${esc(c.o||'')}</td><td title="${esc(c.desc||'')}">${esc(issue)}${sm.issue?'':' <span class="pill">from Zoho text</span>'}</td><td class="muted" title="${esc(c.res||'')}">${esc(out)}${c.rf?' <span class="pill warn">refund $'+esc(c.ra||'')+'</span>':''}</td><td>${st(c)}</td></tr>`;}).join(''):'<tr><td colspan="8" class="muted">No complaints match.</td></tr>');
 }
 
 const ST_COL={'Not Started':'#c4c4c4','In Progress':'#fdab3d','Waiting for Provider':'#a25ddc','Waiting for Customer':'#579bfc','Waiting for input/approval':'#e2445c','Completed':'#00c875','Cancelled':'#797e93','Deferred':'#797e93'};

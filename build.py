@@ -41,6 +41,13 @@ def main():
         print("WARNING config.json could not be used (%s: %s); using the last good copy" % (type(e).__name__, e))
         cfg = json.load(open(last_good))
     pw = open(os.path.expanduser("~/.config/pawkit-cs360/passcode")).read().strip()
+    # approved leave copied from Payboy (kept in the private config) is listed with the requests made on this page
+    pb = (cfg.get("_payboy_leave") or {})
+    leave = raw.get("leave")
+    if pb.get("rows"):
+        leave = (leave or []) + [{"id": "pb%d" % i, "name": r["name"], "type": r["type"], "from": r["from"], "to": r["to"], "status": "Approved",
+                                  "note": r.get("note"), "by": "Payboy", "src": "Payboy", "cover": None, "asked": None, "when": None}
+                                 for i, r in enumerate(pb["rows"])]
     payload = {
         "generated": raw.get("generated") or datetime.now(SGT).isoformat(timespec="minutes"),
         "visits_until": raw.get("visits_until"),
@@ -50,12 +57,13 @@ def main():
         "visits": raw["visits"],
         "comp": raw["comp"],
         "cust": raw.get("cust"),
-        "leave": raw.get("leave"),
+        "leave": leave,
         "tasks": raw.get("tasks", []),
         "orders": raw.get("orders", []),
         "items": raw.get("items", []),
         "inv": raw.get("inv", []),
         "config": {k: v for k, v in cfg.items() if not k.startswith("_")},
+        "payboy_synced": pb.get("synced"),
     }
     plain = json.dumps(payload, separators=(",", ":")).encode()
     salt, iv = os.urandom(16), os.urandom(12)
