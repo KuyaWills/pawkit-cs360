@@ -384,7 +384,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <div class="tiles" id="waTiles"></div>
     <div class="card" id="waTaskCard">
       <h2 id="waTaskTitle">WhatsApp reply tasks</h2>
-      <p class="sub" id="waTaskNote">Unanswered customer chats turned into Zoho tasks by the 8:55 AM after-hours digest, split across the agents on shift. Reply in WhatsApp, then set the task to Completed in Zoho (it also closes by itself the next morning once a Pawkit reply shows in the chat). Click a row to read the messages.</p>
+      <p class="sub" id="waTaskNote">Unanswered customer chats turned into Zoho tasks by the 8:00 AM after-hours digest, split across the agents on shift. Reply in WhatsApp, then set the task to Completed in Zoho (it also closes by itself the next morning once a Pawkit reply shows in the chat). Click a row to read the messages.</p>
       <div class="seg" role="group" aria-label="Show" id="waTaskSeg" style="margin:0 0 10px"><button data-v="open">Open</button><button data-v="done">Completed today</button></div>
       <div class="tablewrap"><table id="waTasks"></table></div>
     </div>
@@ -695,7 +695,7 @@ function renderWaNow(){
   $('waNowTitle').textContent=(WN_F==='urgent'?'Needs urgent care':'Waiting for a reply')+' ('+V.length+')';
   $('waNow').innerHTML=V.length?'<tr><th>'+(isP?'Provider':'Customer')+'</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map((w,i)=>`<tr class="wrow" data-wi="${i}" tabindex="0" title="Click to read the message"><td>${esc(w.name||'No name in Zoho')} <span class="readmsg">read ›</span></td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
 }
-// WhatsApp reply tasks: Zoho tasks made by the 8:55 after-hours digest (Subject "WhatsApp reply – <name>")
+// WhatsApp reply tasks: Zoho tasks made by the 8:00 AM after-hours digest (Subject "WhatsApp reply – <name>")
 let WT_V='open', WT_ROWS=[];
 function waTaskParse(t){ const L=String(t.desc||'').split('\n'), get=k=>{ const l=L.find(x=>x.startsWith(k)); return l?l.slice(k.length).trim():''; };
   const mi=L.indexOf('Messages:'), msgs=[]; if(mi>=0) for(const l of L.slice(mi+1)){ if(!l.trim()) break; msgs.push(l); }

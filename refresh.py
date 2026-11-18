@@ -392,7 +392,7 @@ def main():
               "bid": t.get("Booking_ID"), "wait": t.get("Waiting_On"), "prov": t.get("Provider_Assigned"), "inv": t.get("Invoiced"),
               "paid": t.get("Paid"), "gcal": t.get("GCal_Updated"), "form": t.get("Form_Signed"), "comp": t.get("Compensation_Requested"),
               "conf": t.get("Confirmed_Date_Time"),
-              # WhatsApp reply tasks (made by the 8:55 after-hours digest) also carry the customer's number, name and
+              # WhatsApp reply tasks (made by the 8:00 AM after-hours digest) also carry the customer's number, name and
               # messages, so the WhatsApp page can list them; other tasks publish no description
               **({"tel": "".join(ch for ch in (t.get("Mobile_Number") or "") if ch.isdigit()), "who": t.get("Owner_Name"),
                   "desc": (t.get("Description") or "")[:2000], "out": (t.get("Outcome") or "")[:200]}
