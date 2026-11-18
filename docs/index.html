@@ -187,6 +187,14 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 #decide button.yes{background:var(--good);border-color:var(--good);color:#fff}
 #decide button.no{background:var(--bad);border-color:var(--bad);color:#fff}
 #decide button.alt{background:transparent;border-color:var(--line);color:var(--ink2);font-weight:600;font-size:14px}
+
+details.fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{margin:0}
+details.fold>summary .foldhint{margin-left:auto;font-size:13px;color:var(--brand);font-weight:700}
+details.fold>summary .foldhint::after{content:"Show ▾"}
+details.fold[open]>summary .foldhint::after{content:"Hide ▴"}
+details.fold[open]>summary{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -439,12 +447,12 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
         <div class="tablewrap"><table id="lvPending"></table></div>
       </div>
     </div>
-    <div class="card">
-      <h2 id="lvTitle">Time off requests</h2>
+    <details class="card fold" id="lvCard">
+      <summary><h2 id="lvTitle">Time off requests</h2><span class="foldhint"></span></summary>
       <p class="sub filternote" id="lvNote"></p>
       <p class="sub" id="pbNote"></p>
-      <div class="tablewrap"><table id="leave"></table></div>
-    </div>
+      <div class="tablewrap"><table id="lvAll"></table></div>
+    </details>
     <div class="card">
       <h2>Rest days and time off this week</h2>
       <p class="sub">Rest days from the schedule tracker, with approved time off added.</p>
@@ -642,7 +650,8 @@ function init(data){
       render(day); go(a); return; }
     if(g==='xs'){ $('xFilter').value=a; renderStock(); $('xStock').closest('.card').scrollIntoView({behavior:'smooth',block:'start'}); return; }
     ACT_ON[g]=ACT_ON[g]===act?null:act; render(day);
-    const tgt={wa:'waTable',op:'opTable',xi:'xList',lv:'leave'}[g]; if(tgt&&ACT_ON[g]) $(tgt).closest('.card').scrollIntoView({behavior:'smooth',block:'start'}); };
+    const tgt={wa:'waTable',op:'opTable',xi:'xList',lv:'lvAll'}[g]; if(g==='lv') $('lvCard').open=true;   // a Time Off tile opens the folded list
+    if(tgt&&ACT_ON[g]) $(tgt).closest('.card').scrollIntoView({behavior:'smooth',block:'start'}); };
   $('app').addEventListener('click',e=>{ const c=e.target.closest('[data-clear]'); if(c){ e.preventDefault(); ACT_ON[c.dataset.clear]=null; render($('day').value); return; }
     const t=e.target.closest('.tile[data-act]'); if(t) tileAct(t.dataset.act); });
   $('app').addEventListener('keydown',e=>{ const t=e.target.closest&&e.target.closest('.tile[data-act]'); if(t&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); tileAct(t.dataset.act); } });
@@ -805,7 +814,7 @@ function render(day){
     $('lvTitle').textContent=({Pending:'Requests waiting for approval',today:'Off today, approved',upcoming:'Approved time off, today onwards',all:'All time off requests'})[k]+' ('+V.length+')';
     $('lvNote').innerHTML=k==='all'?'':'<a href="#leave" data-clear="lv">show all requests</a>';
     const pill=st=>`<span class="pill ${st==='Approved'?'on':st==='Rejected'?'bad':st==='Pending'?'warn':''}">${esc(st)}</span>`;
-    $('leave').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
+    $('lvAll').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
     const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.map(p=>`<option>${esc(p.name)}</option>`).join('');
     if(!$('lvFrom').min){ $('lvFrom').min=addDays(td,-14); $('lvTo').min=addDays(td,-14); }
   }
