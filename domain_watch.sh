@@ -13,6 +13,7 @@ cd "${0:A:h}"
 DOMAIN="cs360.pawkit.sg"
 TARGET="pawslyops.github.io"
 REPO="pawslyOps/pawkit-cs360"
+ZONE="pawkit.sg"
 STATE_FILE="${DOMAIN_WATCH_STATE:-.domain-state}"
 NOTE_FILE="${STATE_FILE}.note"
 DRY="${DOMAIN_WATCH_DRY:-}"
@@ -35,10 +36,15 @@ state=$(head -1 "$STATE_FILE" 2>/dev/null); state=${state:-waiting}
 [ "$state" = done ] && exit 0
 
 if [ "$state" = waiting ]; then
+  # the domain's own nameservers are the source of truth (public resolvers can cache "no such record" for an hour);
+  # also require one public resolver to see it, so the record is really visible from outside
+  ns=""; auth=""
+  if [ -z "${DOMAIN_WATCH_FAKE_DNS+x}" ]; then ns=$(dig +short +time=3 +tries=1 NS "$ZONE" @1.1.1.1 2>/dev/null | head -1 | sed 's/\.$//'); fi
+  if [ -n "$ns" ] || [ -n "${DOMAIN_WATCH_FAKE_DNS+x}" ]; then auth=$(lookup "${ns:-fake}"); fi
   a=$(lookup 1.1.1.1); b=$(lookup 8.8.8.8)
-  if [ "$a" != "$TARGET" ] || [ "$b" != "$TARGET" ]; then
-    if [ -z "$a$b" ]; then note "waiting: no DNS record for $DOMAIN yet"
-    else note "waiting: $DOMAIN points to '${a:-nothing}' / '${b:-nothing}', expected $TARGET on both resolvers"; fi
+  if [ "$auth" != "$TARGET" ] || { [ "$a" != "$TARGET" ] && [ "$b" != "$TARGET" ]; }; then
+    if [ -z "$auth$a$b" ]; then note "waiting: no DNS record for $DOMAIN yet"
+    else note "waiting: $DOMAIN -> nameserver '${auth:-nothing}', public resolvers '${a:-nothing}' / '${b:-nothing}'; expected $TARGET"; fi
     exit 0
   fi
   say "DNS is in place: $DOMAIN -> $TARGET. Switching the site."
