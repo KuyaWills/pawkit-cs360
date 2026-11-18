@@ -45,12 +45,14 @@ def main():
     b = lambda x: base64.b64encode(x).decode()
     out = {"v": 1, "iter": ITER, "salt": b(salt), "iv": b(iv), "ct": b(ct)}
     path = os.path.join(HERE, "docs", "data.js")
-    with open(path, "w") as f:
-        f.write("window.CS360_DATA=" + json.dumps(out) + ";\n")
+    if "--no-bundle" not in sys.argv:  # the 5-minute job only refreshes the live data branch
+        with open(path, "w") as f:
+            f.write("window.CS360_DATA=" + json.dumps(out) + ";\n")
     os.makedirs(os.path.join(HERE, "out"), exist_ok=True)
     with open(os.path.join(HERE, "out", "data.json"), "w") as f:
         json.dump(out, f)
-    print("wrote", path, "and out/data.json,", len(plain), "bytes plain, generated", payload["generated"])
+    wrote = "out/data.json" if "--no-bundle" in sys.argv else "docs/data.js and out/data.json"
+    print("wrote %s, %d bytes plain, generated %s" % (wrote, len(plain), payload["generated"]))
 
 
 if __name__ == "__main__":
