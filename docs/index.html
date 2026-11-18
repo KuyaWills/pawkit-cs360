@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light only">
 <title>Pawkit CS360</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
@@ -15,24 +16,6 @@
     --s1:#007f78; --s2:#eb6834;
     --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c-other:#a8a7a1;
     --good:#1a7f37; --good-bg:#e6f4ea; --warn:#9a6700; --warn-bg:#fff4d6; --bad:#c62828; --bad-bg:#fdecea;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --bg:#0f1716; --surface:#16211f; --line:#26332f; --ink:#e8f1ef; --ink2:#b9c9c5; --ink3:#83948f;
-    --head:#d6ece7; --brand:#2bb3a8; --brand2:#3cc9bd; --brand-soft:#173430; --mint:#132a27;
-    --s1:#2bb3a8; --s2:#d95926;
-    --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c-other:#6b6a64;
-    --good:#4cc26a; --good-bg:#16291c; --warn:#e0b341; --warn-bg:#2d2512; --bad:#ef6b6b; --bad-bg:#331a1a;
-  }
-}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --bg:#0f1716; --surface:#16211f; --line:#26332f; --ink:#e8f1ef; --ink2:#b9c9c5; --ink3:#83948f;
-    --head:#d6ece7; --brand:#2bb3a8; --brand2:#3cc9bd; --brand-soft:#173430; --mint:#132a27;
-    --s1:#2bb3a8; --s2:#d95926;
-    --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c-other:#6b6a64;
-    --good:#4cc26a; --good-bg:#16291c; --warn:#e0b341; --warn-bg:#2d2512; --bad:#ef6b6b; --bad-bg:#331a1a;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -53,7 +36,6 @@ button.primary{background:var(--brand);color:#fff;border-color:var(--brand);font
 button.primary:hover{background:var(--brand2);border-color:var(--brand2)}
 button:disabled,input:disabled{opacity:.5;cursor:default}
 #err a{color:var(--brand);font-weight:700}
-:root[data-theme="dark"] button.primary{color:#0b0b0b}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 1px 3px rgba(0,60,55,.04);padding:16px;margin-bottom:14px}
 .card h2{font-size:16px;margin:0 0 4px;color:var(--head);font-weight:700}
 .card .sub{color:var(--ink3);font-size:13px;margin:0 0 12px}
@@ -120,8 +102,6 @@ section[data-panel].active{display:block}
 .tl .name small{display:block;color:var(--ink3);font-size:11.5px}
 .tl .track{position:relative;height:34px}
 .tl .bar{position:absolute;top:8px;height:18px;border-radius:5px;background:var(--brand);color:#fff;font-size:11.5px;line-height:18px;padding:0 6px;overflow:hidden;white-space:nowrap}
-:root[data-theme="dark"] .tl .bar{color:#0b0b0b}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tl .bar{color:#0b0b0b}}
 .tl .bar.mgr{background:var(--ink3)}
 .tl .bar.unk{background:repeating-linear-gradient(45deg,var(--brand-soft) 0 6px,transparent 6px 12px);color:var(--ink2);border:1px dashed var(--brand)}
 .tl .tag{position:absolute;top:8px;left:0;font-size:12px;color:var(--ink3);line-height:18px}
@@ -132,8 +112,6 @@ section[data-panel].active{display:block}
 .tl .cov{display:flex;height:26px;gap:1px}
 .tl .cov div{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:3px;font-variant-numeric:tabular-nums}
 .c0{background:var(--bad-bg);color:var(--bad)} .c1{background:var(--warn-bg);color:var(--warn)} .c2{background:var(--brand-soft);color:var(--brand)} .c3{background:var(--good-bg);color:var(--good)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo{filter:brightness(0) invert(1) opacity(.92)}}
-:root[data-theme="dark"] .logo{filter:brightness(0) invert(1) opacity(.92)}
 .board-card{padding:18px 18px 8px}
 .board-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
 .board-tools{display:flex;gap:8px;flex-wrap:wrap}
@@ -187,6 +165,9 @@ section[data-panel].active{display:block}
 .cal button:disabled{opacity:.45;cursor:default;background:transparent}
 .cal .blank{min-height:64px}
 @media (max-width:560px){.cal button{min-height:52px;padding:5px}.cal button .vi{display:none}}
+.filternote{font-weight:700;color:var(--brand);margin:0 0 8px}
+.filternote:empty{display:none}
+.filternote a{color:var(--brand)}
 footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 </style>
 </head>
@@ -322,6 +303,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     </div>
     <div class="card">
       <h2>Day by day</h2>
+      <p class="sub filternote" id="waTableNote"></p>
       <div class="tablewrap"><table id="waTable"></table></div>
     </div>
   </section>
@@ -347,6 +329,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <div class="card">
       <h2>Order processing</h2>
       <p class="sub">From the Order Processing module in Zoho CRM: product and service orders, delivery and payment.</p>
+      <p class="sub filternote" id="opNote"></p>
       <div class="tablewrap"><table id="opTable"></table></div>
     </div>
   </section>
@@ -365,6 +348,11 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
         <p class="sub">Same completed visits.</p>
         <div class="tablewrap"><table id="xPay"></table></div>
       </div>
+    </div>
+    <div class="card" id="xListCard" style="display:none">
+      <h2 id="xListTitle">Invoices</h2>
+      <p class="sub filternote"><a href="#xero" data-clear="xi">hide this list</a></p>
+      <div class="tablewrap" style="max-height:480px;overflow:auto"><table id="xList"></table></div>
     </div>
     <div class="card">
       <h2>Stock from Xero</h2>
@@ -501,6 +489,19 @@ function init(data){
   TABS.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
   window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
   showTab(location.hash.slice(1)||'overview');
+  const go=t=>{ location.hash='#'+t; showTab(t); window.scrollTo({top:0}); };
+  const tileAct=act=>{ const [g,a,b]=act.split(':'), day=$('day').value;
+    if(g==='go'){
+      if(a==='bookings'){ BK_VIEW=b; BK_DAY=null; BK_RANGE='day'; }
+      if(a==='complaints'){ $('cpFilter').value=b; }
+      if(a==='tasks'){ TK_VIEW=b; }
+      render(day); go(a); return; }
+    if(g==='xs'){ $('xFilter').value=a; renderStock(); $('xStock').closest('.card').scrollIntoView({behavior:'smooth',block:'start'}); return; }
+    ACT_ON[g]=ACT_ON[g]===act?null:act; render(day);
+    const tgt={wa:'waTable',op:'opTable',xi:'xList'}[g]; if(tgt&&ACT_ON[g]) $(tgt).closest('.card').scrollIntoView({behavior:'smooth',block:'start'}); };
+  $('app').addEventListener('click',e=>{ const c=e.target.closest('[data-clear]'); if(c){ e.preventDefault(); ACT_ON[c.dataset.clear]=null; render($('day').value); return; }
+    const t=e.target.closest('.tile[data-act]'); if(t) tileAct(t.dataset.act); });
+  $('app').addEventListener('keydown',e=>{ const t=e.target.closest&&e.target.closest('.tile[data-act]'); if(t&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); tileAct(t.dataset.act); } });
   $('xSearch').addEventListener('input',renderStock); $('cpSearch').addEventListener('input',renderComplaints); ['ctKind','ctMin'].forEach(i=>$(i).addEventListener('change',renderContacts)); $('ctSearch').addEventListener('input',renderContacts); document.querySelectorAll('#bkRange button').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.r))); $('bkDate').addEventListener('change',e=>{if(e.target.value){BK_DAY=e.target.value; renderBookings(BK_DAY);}}); $('bkPrev').addEventListener('click',()=>bkStep(-1)); $('bkNext').addEventListener('click',()=>bkStep(1)); $('bkToday').addEventListener('click',()=>{BK_DAY=sgNow().day; renderBookings(BK_DAY);}); $('tkSearch').addEventListener('input',renderBoard); $('tkOwner').addEventListener('change',renderBoard); $('cpFilter').addEventListener('change',()=>{renderComplaints(); document.querySelectorAll('#cpTiles .tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===$('cpFilter').value));}); $('xFilter').addEventListener('change',renderStock);
   showUpdated();
   try{ render(sel.value); }
@@ -514,6 +515,7 @@ function showUpdated(){
   const el=$('updated'); el.textContent=(mins<=12?'● Live · ':'')+'Updated '+at+' SGT'+(mins>12?' ('+(mins<120?mins+' min':Math.round(mins/60)+' h')+' ago)':'');
   el.style.color=mins<=12?'var(--good)':mins>60?'var(--warn)':'';
 }
+const ACT_ON={};
 let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null, LIVE_FAILED=false;
 async function getJSON(url,opts){
   const c=new AbortController(), t=setTimeout(()=>c.abort(),30000);
@@ -597,15 +599,15 @@ function render(day){
 
   // ---- tiles ----
   const onCount=roster?agents.filter(p=>shiftHours(roster[p.name]).length).length:'–';
-  const tile=(k,v,d)=>`<div class="tile"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  const tile=(k,v,d,act)=>`<div class="tile${act?' click':''}${act&&ACT_ON[act.split(':')[0]]===act?' on':''}"${act?` role="button" tabindex="0" data-act="${esc(act)}" title="Click to show these"`:''}><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
   $('tiles').innerHTML=
-    tile('Human agents on shift',onCount,roster?agents.length+' in the team':'') +
-    tile('WhatsApp from customers',wa.in.toLocaleString(),wa.chats+' customers messaged') +
-    tile('WhatsApp from Pawkit',wa.out.toLocaleString(),'replies and templates') +
-    tile('Bookings made',made.length,'created in Zoho CRM') +
-    tile('Visits',vis.length,[vs.Completed?vs.Completed+' completed':'',vs.Scheduled?vs.Scheduled+' scheduled':'',vs.Cancelled?vs.Cancelled+' cancelled':''].filter(Boolean).join(' · ')) +
-    tile('Open complaints',openComp.length,D.comp.length+' logged in total') +
-    tile('Open tasks',(D.tasks||[]).filter(t=>!['Completed','Cancelled','Deferred'].includes(t.s)).length,'in Zoho CRM');
+    tile('Human agents on shift',onCount,roster?agents.length+' in the team':'','go:schedule') +
+    tile('WhatsApp from customers',wa.in.toLocaleString(),wa.chats+' customers messaged','go:whatsapp') +
+    tile('WhatsApp from Pawkit',wa.out.toLocaleString(),'replies and templates','go:whatsapp') +
+    tile('Bookings made',made.length,'created in Zoho CRM','go:bookings:made') +
+    tile('Visits',vis.length,[vs.Completed?vs.Completed+' completed':'',vs.Scheduled?vs.Scheduled+' scheduled':'',vs.Cancelled?vs.Cancelled+' cancelled':''].filter(Boolean).join(' · '),'go:bookings:visits') +
+    tile('Open complaints',openComp.length,D.comp.length+' logged in total','go:complaints:open') +
+    tile('Open tasks',(D.tasks||[]).filter(t=>!['Completed','Cancelled','Deferred'].includes(t.s)).length,'in Zoho CRM','go:tasks:open');
 
   // ---- who is working ----
   $('whoSub').textContent = isToday ? 'Today, '+fmtDay(day)+'. Green means on shift right now.' : fmtDay(day)+'.';
@@ -685,12 +687,16 @@ function render(day){
 
   // ---- whatsapp tiles + table ----
   const tin=days.reduce((a,d)=>a+D.wa[d].in,0), tout=days.reduce((a,d)=>a+D.wa[d].out,0);
-  $('waTiles').innerHTML=tile('From customers',wa.in.toLocaleString(),fmtDay(day))+tile('From Pawkit',wa.out.toLocaleString(),fmtDay(day))+
-    tile('Customers who messaged',wa.chats,fmtDay(day))+tile('Daily average',Math.round(tin/days.length).toLocaleString(),'from customers, 14 days')+
-    tile('Pawkit messages per customer message',(wa.in?(wa.out/wa.in).toFixed(2):'–'),fmtDay(day));
-  $('waTable').innerHTML='<tr><th>Day</th><th class="num">From customers</th><th class="num">From Pawkit</th><th class="num">Customers</th><th class="num">Agents on</th></tr>'+
-    days.slice().reverse().map(d=>{const w=D.wa[d],r=CFG.roster[d];return `<tr${d===day?' style="background:var(--brand-soft)"':''}><td>${esc(fmtDay(d))}</td><td class="num">${w.in}</td><td class="num">${w.out}</td><td class="num">${w.chats}</td><td class="num">${r?agents.filter(p=>shiftHours(r[p.name]).length).length:'–'}</td></tr>`;}).join('')+
-    `<tr><th>14 days</th><th class="num">${tin.toLocaleString()}</th><th class="num">${tout.toLocaleString()}</th><th></th><th></th></tr>`;
+  $('waTiles').innerHTML=tile('From customers',wa.in.toLocaleString(),fmtDay(day),'wa:in')+tile('From Pawkit',wa.out.toLocaleString(),fmtDay(day),'wa:out')+
+    tile('Customers who messaged',wa.chats,fmtDay(day),'wa:chats')+tile('Daily average',Math.round(tin/days.length).toLocaleString(),'from customers, 14 days','wa:in')+
+    tile('Pawkit messages per customer message',(wa.in?(wa.out/wa.in).toFixed(2):'–'),fmtDay(day),'wa:ratio');
+  const waKey=(ACT_ON.wa||'').split(':')[1], waVal=d=>{const w=D.wa[d];return waKey==='ratio'?(w.in?w.out/w.in:0):(w[waKey]||0);};
+  const waDays=waKey?days.slice().sort((a,b)=>waVal(b)-waVal(a)):days.slice().reverse();
+  const hl=k=>waKey===k?' style="background:var(--brand-soft)"':'';
+  $('waTableNote').innerHTML=waKey?esc('Sorted by '+({in:'messages from customers',out:'messages from Pawkit',chats:'customers who messaged',ratio:'Pawkit messages per customer message'})[waKey]+', highest first')+' · <a href="#whatsapp" data-clear="wa">show by date</a>':'';
+  $('waTable').innerHTML='<tr><th>Day</th><th class="num"'+hl('in')+'>From customers</th><th class="num"'+hl('out')+'>From Pawkit</th><th class="num"'+hl('chats')+'>Customers</th><th class="num"'+hl('ratio')+'>Per customer message</th><th class="num">Agents on</th></tr>'+
+    waDays.map(d=>{const w=D.wa[d],r=CFG.roster[d];return `<tr${d===day?' style="background:var(--brand-soft)"':''}><td>${esc(fmtDay(d))}</td><td class="num">${w.in}</td><td class="num">${w.out}</td><td class="num">${w.chats}</td><td class="num">${w.in?(w.out/w.in).toFixed(2):'–'}</td><td class="num">${r?agents.filter(p=>shiftHours(r[p.name]).length).length:'–'}</td></tr>`;}).join('')+
+    `<tr><th>14 days</th><th class="num">${tin.toLocaleString()}</th><th class="num">${tout.toLocaleString()}</th><th></th><th></th><th></th></tr>`;
 
   // ---- leave: off this week ----
   $('offWeek').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th>${esc(fmtDay(d).replace(/ \w+$/,''))}</th>`).join('')+'</tr>'+
@@ -712,8 +718,11 @@ function render(day){
   // ---- orders ----
   const O=D.orders||[]; const oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s));
   const money=v=>v==null?'':'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
-  $('opTiles').innerHTML=tile('Orders',O.length,'in Order Processing')+tile('Open',oOpen.length,'not delivered, cancelled or returned')+tile('Unpaid',O.filter(o=>['Not Invoiced','Invoiced','Partially Paid','Overdue'].includes(o.pay)).length,'by payment status')+tile('Outstanding',money(O.reduce((a,o)=>a+(o.out||0),0))||'$0','outstanding amount');
-  $('opTable').innerHTML=O.length?'<tr><th>Order</th><th>Date</th><th>Type</th><th>Status</th><th>Fulfilment</th><th>Payment</th><th>Delivery</th><th class="num">Total</th><th>Processed by</th></tr>'+O.slice().sort((a,b)=>(b.d||b.c||'').localeCompare(a.d||a.c||'')).map(o=>`<tr><td>${esc(o.n)}</td><td>${esc(dayOf(o.d||o.c)?fmtDay(dayOf(o.d||o.c)):'')}</td><td>${esc(o.type||'')}</td><td>${stPill(o.s)}</td><td class="muted">${esc(o.ful||'')}</td><td>${esc(o.pay||'')}</td><td class="muted">${esc([o.dm,o.urg].filter(Boolean).join(' · '))}</td><td class="num">${money(o.tot)}</td><td>${esc(o.by||o.agent||'')}</td></tr>`).join(''):'<tr><td class="muted">No orders in the Order Processing module yet. This tab fills in as soon as orders are logged there.</td></tr>';
+  const unpaid=o=>['Not Invoiced','Invoiced','Partially Paid','Overdue'].includes(o.pay);
+  $('opTiles').innerHTML=tile('Orders',O.length,'in Order Processing','op:all')+tile('Open',oOpen.length,'not delivered, cancelled or returned','op:open')+tile('Unpaid',O.filter(unpaid).length,'by payment status','op:unpaid')+tile('Outstanding',money(O.reduce((a,o)=>a+(o.out||0),0))||'$0','outstanding amount','op:out');
+  const opKey=(ACT_ON.op||'op:all').split(':')[1], OV=O.filter(o=>opKey==='open'?oOpen.includes(o):opKey==='unpaid'?unpaid(o):opKey==='out'?(o.out||0)>0:true);
+  $('opNote').innerHTML=opKey==='all'?'':esc(({open:'Open orders only',unpaid:'Unpaid orders only',out:'Orders with an outstanding amount only'})[opKey])+' · <a href="#orders" data-clear="op">show all</a>';
+  $('opTable').innerHTML=O.length?'<tr><th>Order</th><th>Date</th><th>Type</th><th>Status</th><th>Fulfilment</th><th>Payment</th><th>Delivery</th><th class="num">Total</th><th>Processed by</th></tr>'+OV.slice().sort((a,b)=>(b.d||b.c||'').localeCompare(a.d||a.c||'')).map(o=>`<tr><td>${esc(o.n)}</td><td>${esc(dayOf(o.d||o.c)?fmtDay(dayOf(o.d||o.c)):'')}</td><td>${esc(o.type||'')}</td><td>${stPill(o.s)}</td><td class="muted">${esc(o.ful||'')}</td><td>${esc(o.pay||'')}</td><td class="muted">${esc([o.dm,o.urg].filter(Boolean).join(' · '))}</td><td class="num">${money(o.tot)}</td><td>${esc(o.by||o.agent||'')}</td></tr>`).join(''):'<tr><td class="muted">No orders in the Order Processing module yet. This tab fills in as soon as orders are logged there.</td></tr>';
 
   // ---- xero: invoices ----
   const done30=(D.inv||[]).filter(b=>b.s==='Completed');
@@ -721,7 +730,12 @@ function render(day){
   const payC=cnt(done30,b=>b.pm||'Not set'), payPaid=cnt(done30.filter(b=>b.inv==='Paid'),b=>b.pm||'Not set');
   const items=D.items||[], inStock=items.filter(i=>(i.q||0)>0), low=inStock.filter(i=>i.q<=5);
   const sync=items.reduce((m,i)=>i.sync&&i.sync>m?i.sync:m,'');
-  $('xTiles').innerHTML=tile('Completed visits, 30 days',done30.length,'with an invoice status')+tile('Invoice paid',invC.Paid||0,money(invAmt.Paid||0))+tile('Invoice sent, not paid',invC.Sent||0,money(invAmt.Sent||0)+' at base price')+tile('Stock items in stock',inStock.length,items.length+' Xero items')+tile('Low stock',low.length,'1 to 5 left');
+  $('xTiles').innerHTML=tile('Completed visits, 30 days',done30.length,'with an invoice status','xi:all')+tile('Invoice paid',invC.Paid||0,money(invAmt.Paid||0),'xi:Paid')+tile('Invoice sent, not paid',invC.Sent||0,money(invAmt.Sent||0)+' at base price','xi:Sent')+tile('Stock items in stock',inStock.length,items.length+' Xero items','xs:in')+tile('Low stock',low.length,'1 to 5 left','xs:low');
+  const xiKey=(ACT_ON.xi||'').split(':')[1];
+  $('xListCard').style.display=xiKey?'':'none';
+  if(xiKey){ const L=done30.filter(b=>xiKey==='all'||(b.inv||'No status')===xiKey).sort((a,b)=>(b.d||'').localeCompare(a.d||''));
+    $('xListTitle').textContent=(xiKey==='all'?'Completed visits':'Invoices marked '+xiKey)+', last 30 days ('+L.length+')';
+    $('xList').innerHTML='<tr><th>Visit</th><th>Service</th><th>Payment method</th><th>Invoice</th><th>Paid on</th><th class="num">Base price</th></tr>'+L.map(b=>`<tr><td style="white-space:nowrap">${esc(fmtDay(dayOf(b.d)))}</td><td>${esc(b.cat||'')}</td><td>${esc(b.pm||'Not set')}</td><td>${esc(b.inv||'No status')}</td><td class="muted">${b.po?esc(fmtDay(b.po)):''}</td><td class="num">${b.amt!=null?'$'+esc(b.amt):''}</td></tr>`).join('')+`<tr><th colspan="5">Total</th><th class="num">${money(L.reduce((a,b)=>a+(b.amt||0),0))}</th></tr>`; }
   $('xInv').innerHTML='<tr><th>Invoice status</th><th class="num">Visits</th><th class="num">Base price</th></tr>'+Object.keys(invC).sort((a,b)=>invC[b]-invC[a]).map(k=>`<tr><td>${stPill(k==='Paid'?'Completed':k==='Sent'?'Waiting':k).replace(/>[^<]*<\/span>/,()=>'>'+esc(k)+'</span>')}</td><td class="num">${invC[k]}</td><td class="num">${money(invAmt[k])}</td></tr>`).join('')+
     `<tr><td colspan="3" class="muted" style="font-size:12.5px">"Sent" can also mean paid in Xero but not yet synced back to Zoho CRM. Check before chasing anyone.</td></tr>`;
   $('xPay').innerHTML='<tr><th>Payment method</th><th class="num">Visits</th><th class="num">Marked paid</th></tr>'+Object.keys(payC).sort((a,b)=>payC[b]-payC[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${payC[k]}</td><td class="num">${payPaid[k]||0}</td></tr>`).join('');
