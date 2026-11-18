@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives import hashes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ITER = 310000
-REFRESH_SECONDS = 60  # keep equal to StartInterval in com.pawkit.cs360-refresh.plist; the page times its checks from it
+REFRESH_SECONDS = 60  # seconds between updates: launchd waits StartInterval (30) after a run ends and a run takes about 30; the page times its checks from this
 SGT = timezone(timedelta(hours=8))
 
 
