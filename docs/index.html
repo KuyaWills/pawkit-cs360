@@ -296,6 +296,9 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <button role="tab" data-tab="xero">Xero</button>
   </nav>
   <nav class="tabs" role="tablist" id="wfTabs" aria-label="Sections" style="display:none;margin-top:-6px"></nav>
+  <div class="rangebar" id="csBar" style="display:none"><div class="seg" role="group" aria-label="Range" id="csRange"><button data-r="day">Day</button><button data-r="week">Week</button><button data-r="month">Month</button><button data-r="all">All</button></div>
+    <div class="datepick"><button id="csPrev" aria-label="Previous" title="Previous">‹</button><input id="csDate" type="date" aria-label="Pick a date"><button id="csNext" aria-label="Next" title="Next">›</button><button id="csToday" class="todaybtn">Today</button></div>
+    <span id="csRangeLabel" class="rangelabel"></span></div>
 
   <!-- OVERVIEW -->
   <section data-panel="overview">
@@ -643,6 +646,28 @@ let DECIDE=null;
 // a record name that opens that record in Zoho CRM (link bases come from the private config)
 const recLink=(kind,id,text)=>{ const b=((CFG&&CFG.links||{}).record||{})[kind]; return b&&id?`<a href="${esc(b+encodeURIComponent(id))}" target="_blank" rel="noopener" title="Open in Zoho">${esc(text)}</a>`:esc(text); };
 let WN_F='waiting', WN_SEG='cust', WN_ROWS=[];
+// ---- date filter for the Customer Service pages (each page remembers its own range) ----
+const CSF={whatsapp:{r:'day',d:null},tasks:{r:'all',d:null},complaints:{r:'all',d:null}};
+const CS_BY={whatsapp:'by message date',tasks:'tasks by due date',complaints:'by complaint date'};
+let CUR_PANEL='overview';
+function rangeOf(r,day){ const d=dparts(day);
+  if(r==='week'){ const dow=(d.getUTCDay()+6)%7, from=addDays(day,-dow); return {from,to:addDays(from,6),label:'Week of '+fmtDay(from)}; }
+  if(r==='month'){ const from=day.slice(0,8)+'01', nd=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return {from,to:nd.toISOString().slice(0,10),label:['January','February','March','April','May','June','July','August','September','October','November','December'][d.getUTCMonth()]+' '+d.getUTCFullYear()}; }
+  return {from:day,to:day,label:fmtDay(day)}; }
+function csR(p){ const f=CSF[p], day=f.d||(p==='whatsapp'&&$('day').value)||sgNow().day;
+  if(f.r==='all') return {all:true,label:'All dates',day,has:()=>true};
+  const R=rangeOf(f.r,day); return {...R,all:false,day,has:x=>!!x&&x>=R.from&&x<=R.to}; }
+function csBarSync(){ const on=!!CSF[CUR_PANEL]; $('csBar').style.display=on?'':'none'; if(!on) return;
+  const f=CSF[CUR_PANEL], R=csR(CUR_PANEL);
+  $('csRange').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===f.r)));
+  $('csDate').value=R.day; ['csDate','csPrev','csNext'].forEach(i=>$(i).disabled=R.all);
+  $('csRangeLabel').textContent=R.label+' · '+CS_BY[CUR_PANEL]; }
+function csSet(patch){ Object.assign(CSF[CUR_PANEL],patch); csBarSync(); render($('day').value); }
+function csStep(dir){ const f=CSF[CUR_PANEL], a=csR(CUR_PANEL).day; let d;
+  if(f.r==='month'){ const x=dparts(a); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth()+dir); d=x.toISOString().slice(0,10); } else d=addDays(a,dir*(f.r==='week'?7:1));
+  csSet({d}); }
+document.addEventListener('click',e=>{ const b=e.target.closest('#csRange button'); if(b) csSet({r:b.dataset.r}); else if(e.target.id==='csPrev') csStep(-1); else if(e.target.id==='csNext') csStep(1); else if(e.target.id==='csToday') csSet({d:sgNow().day,r:CSF[CUR_PANEL].r==='all'?'day':CSF[CUR_PANEL].r}); });
+document.addEventListener('change',e=>{ if(e.target.id==='csDate'&&e.target.value) csSet({d:e.target.value,r:CSF[CUR_PANEL].r==='all'?'day':CSF[CUR_PANEL].r}); });
 const telFmt=t=>{ t=String(t||''); if(/^65\d{8}$/.test(t)) return '+65 '+t.slice(2,6)+' '+t.slice(6); return t?'+'+t:''; };
 function renderWaNow(){
   const W=D.wa_now, wrap=$('waNowWrap'); if(!W){ wrap.style.display='none'; return; } wrap.style.display='';
@@ -713,6 +738,7 @@ function init(data){
     const grp=GROUPS[t], panel=alone||(grp?SUB[t]:t), bar=$('wfTabs');
     TABS.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
     bar.style.display=grp?'':'none';
+    CUR_PANEL=panel; csBarSync();
     bar.innerHTML=grp?grp.map(([p,l])=>`<button role="tab" data-wf="${p}" aria-selected="${p===(alone?ALONE[alone]:panel)}">${esc(l)}</button>`).join(''):'';
     document.querySelectorAll('section[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===panel));
     try{history.replaceState(null,'','#'+panel)}catch(e){} };
@@ -931,14 +957,15 @@ function render(day){
   // ---- complaints ----
   const since=addDays(now.day,-30);
   const cDay=c=>dayOf(c.cd||c.c)||'';
-  const recent=D.comp.filter(c=>cDay(c)>=since);
-  const late=D.comp.filter(c=>c.cat==='Late Arrival');
+  const cpR=csR('complaints'), CPF=D.comp.filter(c=>cpR.all||cpR.has(cDay(c))), cpOpen=CPF.filter(c=>!['Resolved','Closed'].includes(c.s));
+  const recent=CPF.filter(c=>cDay(c)>=since);
+  const late=CPF.filter(c=>c.cat==='Late Arrival');
   const ctile=(f,k,v,d)=>`<div class="tile click${$('cpFilter').value===f?' on':''}" role="button" tabindex="0" data-f="${f}" title="Show only these complaints"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
-  const firstC=D.comp.map(cDay).filter(Boolean).sort()[0];
-  $('cpTiles').innerHTML=ctile('all','Complaints logged',D.comp.length,firstC?'since '+fmtDay(firstC):'')+
-    ctile('open','Not closed',openComp.length,openComp.map(c=>c.n).join(', '))+ctile('30','Last 30 days',recent.length,'')+
-    ctile('late','Late arrivals',late.length,Math.round(late.length/Math.max(1,D.comp.length)*100)+'% of all complaints')+
-    ctile('refund','Refunds',D.comp.filter(c=>c.rf).length,'$'+D.comp.reduce((x,c)=>x+(c.ra||0),0)+' refunded');
+  const firstC=CPF.map(cDay).filter(Boolean).sort()[0];
+  $('cpTiles').innerHTML=ctile('all','Complaints logged',CPF.length,cpR.all?(firstC?'since '+fmtDay(firstC):''):cpR.label)+
+    ctile('open','Not closed',cpOpen.length,cpOpen.map(c=>c.n).join(', '))+ctile('30','Last 30 days',recent.length,'')+
+    ctile('late','Late arrivals',late.length,Math.round(late.length/Math.max(1,CPF.length)*100)+'% of all complaints')+
+    ctile('refund','Refunds',CPF.filter(c=>c.rf).length,'$'+CPF.reduce((x,c)=>x+(c.ra||0),0)+' refunded');
   $('cpTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{$('cpFilter').value=t.dataset.f; renderComplaints(); $('cpTiles').querySelectorAll('.tile.click').forEach(x=>x.classList.toggle('on',x===t)); $('comp').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   const cc=cnt(D.comp,c=>c.cat||'No category'), c30=cnt(recent,c=>c.cat||'No category');
   $('cpCat').innerHTML='<tr><th>Category</th><th class="num">30 days</th><th class="num">All</th></tr>'+Object.keys(cc).sort((x,y)=>cc[y]-cc[x]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${c30[k]||0}</td><td class="num">${cc[k]}</td></tr>`).join('');
@@ -976,12 +1003,14 @@ function render(day){
 
   // ---- whatsapp tiles + table ----
   const tin=days.reduce((a,d)=>a+D.wa[d].in,0), tout=days.reduce((a,d)=>a+D.wa[d].out,0);
-  $('waTiles').innerHTML=tile('From customers',wa.in.toLocaleString(),fmtDay(day),'wa:in')+tile('From Pawkit',wa.out.toLocaleString(),fmtDay(day),'wa:out')+
-    tile('Customers who messaged',wa.chats,fmtDay(day),'wa:chats')+tile('Daily average',Math.round(tin/days.length).toLocaleString(),'from customers, 14 days','wa:in')+
-    tile('Pawkit messages per customer message',(wa.in?(wa.out/wa.in).toFixed(2):'–'),fmtDay(day),'wa:ratio');
+  const cw=csR('whatsapp'), wdays=days.filter(d=>cw.has(d)), wsum=k=>wdays.reduce((a,d)=>a+(D.wa[d][k]||0),0), wIn=wsum('in'), wOut=wsum('out');
+  const wl=cw.all?'last '+days.length+' days':cw.label, wn=wdays.length+' day'+(wdays.length===1?'':'s')+' with data';
+  $('waTiles').innerHTML=tile('From customers',wIn.toLocaleString(),wl,'wa:in')+tile('From Pawkit',wOut.toLocaleString(),wl,'wa:out')+
+    tile('Customers who messaged',wsum('chats').toLocaleString(),wdays.length>1?'counted per day, '+wn:wl,'wa:chats')+tile('Daily average',Math.round(wIn/(wdays.length||1)).toLocaleString(),'from customers, '+wn,'wa:in')+
+    tile('Pawkit messages per customer message',(wIn?(wOut/wIn).toFixed(2):'–'),wl,'wa:ratio');
   renderWaNow();
   const waKey=(ACT_ON.wa||'').split(':')[1], waVal=d=>{const w=D.wa[d];return waKey==='ratio'?(w.in?w.out/w.in:0):(w[waKey]||0);};
-  const waDays=waKey?days.slice().sort((a,b)=>waVal(b)-waVal(a)):days.slice().reverse();
+  const waDays=(waKey?days.slice().sort((a,b)=>waVal(b)-waVal(a)):days.slice().reverse()).filter(d=>cw.has(d));
   const hl=k=>waKey===k?' style="background:var(--brand-soft)"':'';
   $('waTableNote').innerHTML=waKey?esc('Sorted by '+({in:'messages from customers',out:'messages from Pawkit',chats:'customers who messaged',ratio:'Pawkit messages per customer message'})[waKey]+', highest first')+' · <a href="#whatsapp" data-clear="wa">show by date</a>':'';
   $('waTable').innerHTML='<tr><th>Day</th><th class="num"'+hl('in')+'>From customers</th><th class="num"'+hl('out')+'>From Pawkit</th><th class="num"'+hl('chats')+'>Customers</th><th class="num"'+hl('ratio')+'>Per customer message</th><th class="num">Agents on</th></tr>'+
@@ -995,11 +1024,11 @@ function render(day){
 
   // ---- tasks ----
   const stPill=s=>`<span class="pill ${s==='Completed'?'on':/Waiting/.test(s||'')?'warn':s==='In Progress'?'brand':''}">${esc(s||'No status')}</span>`;
-  const T=D.tasks||[]; const OPEN_T=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
+  const ct=csR('tasks'), T=(D.tasks||[]).filter(t=>ct.all||ct.has(t.due)); const OPEN_T=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
   const tOpen=T.filter(OPEN_T);
   const since14=addDays(now.day,-14);
   const ttile=(f,k,v,d)=>`<div class="tile click${TK_VIEW===f?' on':''}" role="button" tabindex="0" data-f="${f}" title="Show only these tasks"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
-  $('tkTiles').innerHTML=ttile('open','Open tasks',tOpen.length,T.length+' in Zoho CRM')+ttile('overdue','Overdue',tOpen.filter(t=>t.due&&t.due<now.day).length,'due before today')+ttile('today','Due today',tOpen.filter(t=>t.due===now.day).length,fmtDay(now.day))+ttile('waiting','Waiting',tOpen.filter(t=>/Waiting/.test(t.s||'')).length,'on a provider, customer or approval')+ttile('done','Done, 14 days',T.filter(t=>t.s==='Completed'&&dayOf(t.cl)>=since14).length,'');
+  $('tkTiles').innerHTML=ttile('open','Open tasks',tOpen.length,T.length+(ct.all?' in Zoho CRM':' due in '+ct.label))+ttile('overdue','Overdue',tOpen.filter(t=>t.due&&t.due<now.day).length,'due before today')+ttile('today','Due today',tOpen.filter(t=>t.due===now.day).length,fmtDay(now.day))+ttile('waiting','Waiting',tOpen.filter(t=>/Waiting/.test(t.s||'')).length,'on a provider, customer or approval')+ttile('done','Done, 14 days',T.filter(t=>t.s==='Completed'&&dayOf(t.cl)>=since14).length,'');
   $('tkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{TK_VIEW=TK_VIEW===t.dataset.f?'all':t.dataset.f; $('tkTiles').querySelectorAll('.tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===TK_VIEW)); renderBoard(); $('board').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   const ownSel=$('tkOwner'), cur=ownSel.value; const owners=[...new Set(T.map(t=>t.own).filter(Boolean))].sort();
   ownSel.innerHTML='<option value="">Everyone</option>'+owners.map(o=>`<option${o===cur?' selected':''}>${esc(o)}</option>`).join('');
@@ -1047,7 +1076,9 @@ function renderComplaints(){
   const SUM=CFG.complaint_summaries||{};
   const cDay=c=>dayOf(c.cd||c.c)||'';
   const short=t=>{t=(t||'').trim();return t.length>160?t.slice(0,157).replace(/\s+\S*$/,'')+'…':t;};
+  const cpR=csR('complaints');
   const rows=D.comp.filter(c=>{
+    if(!cpR.all&&!cpR.has(cDay(c)))return false;
     if(f==='open'&&['Resolved','Closed'].includes(c.s))return false;
     if(f==='30'&&cDay(c)<since)return false;
     if(f==='late'&&c.cat!=='Late Arrival')return false;
@@ -1076,7 +1107,8 @@ function renderBoard(){
   const since14=addDays(now.day,-14);
   const isOpen=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
   const VIEW={all:()=>true, open:isOpen, overdue:t=>isOpen(t)&&t.due&&t.due<now.day, today:t=>isOpen(t)&&t.due===now.day, waiting:t=>isOpen(t)&&/Waiting/.test(t.s||''), done:t=>t.s==='Completed'&&(dayOf(t.cl)||'')>=since14}[TK_VIEW]||(()=>true);
-  const T=(D.tasks||[]).filter(t=>VIEW(t)&&(!who||t.own===who)&&(!q||[t.sub,t.own,t.type,t.s,t.ho,t.prov,t.bid].join(' ').toLowerCase().includes(q)));
+  const ct=csR('tasks');
+  const T=(D.tasks||[]).filter(t=>(ct.all||ct.has(t.due))&&VIEW(t)&&(!who||t.own===who)&&(!q||[t.sub,t.own,t.type,t.s,t.ho,t.prov,t.bid].join(' ').toLowerCase().includes(q)));
   $('tkFilterNote').innerHTML=TK_VIEW==='all'?'':esc(TK_LABEL[TK_VIEW])+' · <a href="#tasks" id="tkClear">show all</a>';
   const clr=$('tkClear'); if(clr) clr.addEventListener('click',e=>{e.preventDefault(); TK_VIEW='all'; document.querySelectorAll('#tkTiles .tile.click').forEach(x=>x.classList.remove('on')); renderBoard();});
   const groups=[
