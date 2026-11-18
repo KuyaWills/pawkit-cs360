@@ -205,12 +205,12 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
   <img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit">
   <div id="dcBody"></div>
   <form id="dcForm" action="https://crm.zoho.com/crm/WebForm" method="POST" accept-charset="UTF-8" style="display:none">
-    <input type="hidden" name="xnQsjsdp" value="9f566a144a11076c0950e19eb97b0ff6a02209e97d4dd03f11c2ff0273f01999">
+    <input type="hidden" name="xnQsjsdp" value="cf65d8c56f0603b9d9ca66e97844d9b50c82e3429abeb46472484b00446eba36">
     <input type="hidden" name="zc_gad" value="">
-    <input type="hidden" name="xmIwtLD" value="e57cf98458ff241298ac831c62bade9ab7e7d76b0b9eebe7ca548cc62483089c0ed5f367617a3f2e5523124586ad079c">
+    <input type="hidden" name="xmIwtLD" value="bbafc3ada05cc9552a7f18cb3c0aa8c2a9da2758bf75fca841c4b9cbb99efb0d0c63b7163dec7ad5e445a075d3669fd1">
     <input type="hidden" name="actionType" value="Q3VzdG9tTW9kdWxlMjU=">
     <input type="hidden" name="returnURL" value="https://cs360.pawkit.sg/#decided">
-    <input type="hidden" name="NAME"><input type="hidden" name="COBJ25CF1"><input type="hidden" name="COBJ25CF2"><input type="hidden" name="COBJ25CF3">
+    <input type="hidden" name="NAME"><input type="hidden" name="COBJ25CF1"><input type="hidden" name="COBJ25CF2"><input type="hidden" name="COBJ25CF3"><input type="hidden" name="COBJ25CF4"><input type="hidden" name="COBJ25CF5">
     <input type="text" name="aG9uZXlwb3Q" value="" tabindex="-1" autocomplete="off">
   </form>
 </div></div>
@@ -425,7 +425,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
       </div>
       <div class="card">
         <h2>Waiting for approval</h2>
-        <p class="sub">Each request is emailed to Charlene with Approve and Reject buttons. Her choice shows here a few minutes after she taps.</p>
+        <p class="sub">Each request is emailed to Charlene with Approve and Reject buttons. Her choice shows here a few minutes after she taps, and the team member gets an email with the outcome.</p>
         <div class="tablewrap"><table id="lvPending"></table></div>
       </div>
     </div>
@@ -536,7 +536,8 @@ const cnt=(arr,f)=>{const o={};arr.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+1;});
 
 let D, CFG;
 // ---------- time off decision, opened from the buttons in the approver's email ----------
-// Link form: #td/<request id>/<A|R>/<approval key>. Nothing is sent until the button on this page is pressed.
+// Link form: #td/<request id>/<A|R>/<approval key>/<name>/<type>/<from>/<to> (the last four are for the email
+// that tells the team member the outcome). Nothing is sent until the button on this page is pressed.
 let DECIDE=null;
 (function(){
   const h=location.hash, box=$('decide'), body=$('dcBody'), ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
@@ -548,16 +549,19 @@ let DECIDE=null;
     body.innerHTML='<h1>'+(d==='Approved'?'Approved. Thank you.':d==='Rejected'?'Rejected. Thank you.':'Your decision is recorded.')+'</h1><p>The dashboard and the schedule update within a few minutes. You can close this page.</p>'+closeBtn; wire(); return;
   }
   if(!h.startsWith('#td/')) return;
-  const [id,dc,key]=h.slice(4).split('/'); box.style.display='flex';
+  const [id,dc,key,...rest]=h.slice(4).split('/'); box.style.display='flex';
+  const dq=x=>{try{return decodeURIComponent(x).replace(/\+/g,' ').trim()}catch(e){return ''}};
+  const who=dq(rest[0]||''), typ=dq(rest[1]||''), ds=rest.slice(2), half=Math.ceil(ds.length/2);   // dates may themselves contain slashes
+  const dfrom=dq(ds.slice(0,half).join('/')), dto=dq(ds.slice(half).join('/'));
   try{history.replaceState(null,'','#td')}catch(e){}            // keep the key out of the address bar and history
   if(!/^\d{8,25}$/.test(id||'')||!/^[AR]$/.test(dc||'')||!/^[\w-]{16,80}$/.test(key||'')){
     body.innerHTML='<h1>This link did not come through properly</h1><p>Please try the button in the email again, or ask Vince to record your decision.</p>'+closeBtn; wire(); return;
   }
-  DECIDE={id,d:dc==='A'?'Approved':'Rejected',key};
+  DECIDE={id,d:dc==='A'?'Approved':'Rejected',key,who:(who||'').slice(0,60),sum:[typ,dfrom&&dto&&dfrom!==dto?dfrom+' to '+dto:dfrom].filter(Boolean).join(', ').slice(0,200)};
   const draw=()=>{ const ap=DECIDE.d==='Approved';
-    body.innerHTML='<h1>'+(ap?'Approve':'Reject')+' this time off request?</h1><div class="who" id="dcWho" style="display:none"></div><p>Press the button to confirm. Nothing else to fill in.</p>'+
+    body.innerHTML='<h1>'+(ap?'Approve':'Reject')+' this time off request?</h1><div class="who" id="dcWho" style="'+(DECIDE.who?'':'display:none')+'">'+(DECIDE.who?'<b>'+esc(DECIDE.who)+'</b>'+(DECIDE.sum?' · '+esc(DECIDE.sum):''):'')+'</div><p>Press the button to confirm. Nothing else to fill in. The team member is emailed the outcome.</p>'+
       '<button type="button" id="dcGo" class="'+(ap?'yes':'no')+'">'+(ap?'Yes, approve':'Yes, reject')+'</button><button type="button" id="dcSwap" class="alt">'+(ap?'Reject instead':'Approve instead')+'</button>';
-    $('dcGo').addEventListener('click',()=>{ const f=$('dcForm'); f.NAME.value=DECIDE.d+' '+DECIDE.id; f.COBJ25CF1.value=DECIDE.id; f.COBJ25CF2.value=DECIDE.d; f.COBJ25CF3.value=DECIDE.key;
+    $('dcGo').addEventListener('click',()=>{ const f=$('dcForm'); f.NAME.value=DECIDE.d+' '+DECIDE.id; f.COBJ25CF1.value=DECIDE.id; f.COBJ25CF2.value=DECIDE.d; f.COBJ25CF3.value=DECIDE.key; f.COBJ25CF4.value=DECIDE.who; f.COBJ25CF5.value=DECIDE.sum;
       ss.set('cs360_td',DECIDE.d); $('dcGo').disabled=true; $('dcGo').textContent='Saving…'; f.submit(); });
     $('dcSwap').addEventListener('click',()=>{ DECIDE.d=ap?'Rejected':'Approved'; draw(); });
     decideDetails(); };
