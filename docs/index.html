@@ -366,6 +366,7 @@ a.btnlink:hover{background:var(--brand2)}
     <div id="waNowWrap">
       <h2 style="margin:18px 4px 2px">Reply status right now</h2>
       <p class="sub" id="waNowNote" style="margin:0 4px 10px"></p>
+      <div class="seg" role="group" aria-label="Who" id="waSeg" style="margin:0 0 12px"><button data-s="cust">Customers</button><button data-s="prov">Service providers</button></div>
       <div class="tiles" id="waNowTiles"></div>
       <div class="card">
         <h2 id="waNowTitle">Waiting for a reply</h2>
@@ -625,24 +626,27 @@ let DECIDE=null;
 // WhatsApp reply status: answered, waiting, needs urgent care (worked out by refresh.py from the last 48 hours)
 // a record name that opens that record in Zoho CRM (link bases come from the private config)
 const recLink=(kind,id,text)=>{ const b=((CFG&&CFG.links||{}).record||{})[kind]; return b&&id?`<a href="${esc(b+encodeURIComponent(id))}" target="_blank" rel="noopener" title="Open in Zoho">${esc(text)}</a>`:esc(text); };
-let WN_F='waiting';
+let WN_F='waiting', WN_SEG='cust';
 const telFmt=t=>{ t=String(t||''); if(/^65\d{8}$/.test(t)) return '+65 '+t.slice(2,6)+' '+t.slice(6); return t?'+'+t:''; };
 function renderWaNow(){
   const W=D.wa_now, wrap=$('waNowWrap'); if(!W){ wrap.style.display='none'; return; } wrap.style.display='';
   const gen=new Date(D.generated), age=m=>{ m=Math.max(0,Math.round(m)); return m<60?m+' min':m<1440?Math.floor(m/60)+' h '+(m%60)+' min':Math.floor(m/1440)+' d '+Math.floor(m%1440/60)+' h'; };
   const drift=Math.max(0,Math.round((Date.now()-gen.getTime())/60000));
-  const wt=W.waiting.map(w=>({...w,mins:w.mins+drift})).map(w=>({...w,urgent:w.urgent||w.mins>=W.urgent_after}));
-  const urg=wt.filter(w=>w.urgent), pct=W.convs?Math.round(W.answered/W.convs*100):0;
-  $('waNowNote').textContent='Customers who messaged in the last '+W.window_h+' hours. Waiting = their latest message has no Pawkit reply after it (a plain thanks, ok or emoji does not count). Urgent = waiting '+W.urgent_after+' minutes or more, or the message has an urgent word.';
+  const SEG=W.seg||{cust:{convs:W.convs,answered:W.answered},prov:{convs:0,answered:0}}, S=SEG[WN_SEG], isP=WN_SEG==='prov';
+  const allW=W.waiting.map(w=>({...w,mins:w.mins+drift})).map(w=>({...w,urgent:w.urgent||w.mins>=W.urgent_after}));
+  const wt=allW.filter(w=>!!w.prov===isP), urg=wt.filter(w=>w.urgent), pct=S.convs?Math.round(S.answered/S.convs*100):0;
+  $('waSeg').querySelectorAll('button').forEach(b=>{ const k=b.dataset.s, n=allW.filter(w=>!!w.prov===(k==='prov')).length; b.setAttribute('aria-pressed',String(k===WN_SEG)); b.classList.toggle('on',k===WN_SEG); b.textContent=(k==='prov'?'Service providers':'Customers')+' · '+SEG[k].convs+(n?' ('+n+' waiting)':''); });
+  $('waNowNote').textContent='One-to-one WhatsApp chats in the last '+W.window_h+' hours, split into customers and service providers (numbers on the Partner list in Zoho). WhatsApp group chats are not in the Zoho log. Waiting = their latest message has no Pawkit reply after it (a plain thanks, ok or emoji does not count, and a Pawkit emoji reaction counts as a reply). Urgent = waiting '+W.urgent_after+' minutes or more, or the message has an urgent word.';
   const t=(f,k,v,d,cls)=>`<div class="tile click${WN_F===f?' on':''}" role="button" tabindex="0" data-wn="${f}" title="Show the list"><div class="k">${esc(k)}</div><div class="v"${cls?' style="color:var(--'+cls+')"':''}>${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
-  $('waNowTiles').innerHTML=t('all','Conversations',W.convs,'customers, last '+W.window_h+' hours')+t('all','Answered',W.answered,pct+'% of conversations',pct>=90?'good':'')+
+  $('waNowTiles').innerHTML=t('all','Conversations',S.convs,(isP?'service providers':'customers')+', last '+W.window_h+' hours')+t('all','Answered',S.answered,pct+'% of conversations',pct>=90?'good':'')+
     t('waiting','Waiting for a reply',wt.length,wt.length?'longest '+age(wt[0].mins):'none right now',wt.length?'warn':'good')+
     t('urgent','Needs urgent care',urg.length,urg.length?'waiting '+W.urgent_after+' min or more, or urgent word':'none right now',urg.length?'bad':'good')+
-    t('all','Typical reply time',W.median_reply_min==null?'–':age(W.median_reply_min),'median today, customer message to reply');
+    (isP?'':t('all','Typical reply time',W.median_reply_min==null?'–':age(W.median_reply_min),'median today, customer message to reply'));
   const V=WN_F==='urgent'?urg:wt;
   $('waNowTitle').textContent=(WN_F==='urgent'?'Needs urgent care':'Waiting for a reply')+' ('+V.length+')';
-  $('waNow').innerHTML=V.length?'<tr><th>Customer</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map(w=>`<tr><td>${esc(w.name||'No name in Zoho')}</td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
+  $('waNow').innerHTML=V.length?'<tr><th>'+(isP?'Provider':'Customer')+'</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map(w=>`<tr><td>${esc(w.name||'No name in Zoho')}</td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
 }
+document.addEventListener('click',e=>{ const b=e.target.closest('#waSeg button'); if(b){ WN_SEG=b.dataset.s; renderWaNow(); } });
 document.addEventListener('click',e=>{ const t=e.target.closest('[data-wn]'); if(!t) return; WN_F=t.dataset.wn==='all'?'waiting':t.dataset.wn; renderWaNow(); $('waNow').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); });
 // sick leave needs a medical document: say whether one is attached to the request in Zoho
 const docPill=l=>l.type!=='Sick leave'||l.doc==null?'':l.doc?' <span class="pill on">document attached</span>':' <span class="pill bad">no document</span>';
@@ -823,10 +827,10 @@ function render(day){
       st(pendL.length,'time off to approve','go:leave',pendL.length?'warn':'')],chips);
     // customer service
     const W=D.wa_now, drift=W?Math.max(0,Math.round((Date.now()-new Date(D.generated).getTime())/60000)):0;
-    const wt=W?W.waiting.map(w=>({...w,mins:w.mins+drift})):[], urg=wt.filter(w=>w.urgent||w.mins>=(W?W.urgent_after:30));
+    const wt=W?W.waiting.filter(w=>!w.prov).map(w=>({...w,mins:w.mins+drift})):[], urg=wt.filter(w=>w.urgent||w.mins>=(W?W.urgent_after:30));
     const tOpen=(D.tasks||[]).filter(t=>!['Completed','Cancelled','Deferred'].includes(t.s)), tOver=tOpen.filter(t=>t.due&&t.due<now.day);
     const cs=card('service','Service','Customer Service','go:whatsapp',[
-      st(W?wt.length:'–','WhatsApp chats waiting','go:whatsapp',wt.length?'warn':''),
+      st(W?wt.length:'–','customer chats waiting','go:whatsapp',wt.length?'warn':''),
       st(W?urg.length:'–','need urgent care','go:whatsapp',urg.length?'bad':''),
       st(tOpen.length,'open tasks'+(tOver.length?', '+tOver.length+' overdue':''),'go:tasks:open',tOver.length?'warn':''),
       st(openComp.length,'open complaints','go:complaints:open',openComp.length?'bad':'')],

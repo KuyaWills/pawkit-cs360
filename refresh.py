@@ -88,7 +88,9 @@ def whatsapp_status(z, now):
     conv = {}
     for r in sorted(rows, key=lambda r: r.get(W + "Message_Date_time") or ""):
         t, typ, d = r.get(W + "Message_Date_time"), r.get(W + "Message_Type"), r.get(W + "Direction")
-        if not t or not typ or typ in ("REACT", "SMB_CONTACTS", "READ", "SENT", "DELIVERY") or d not in ("In", "Out"):
+        if not t or not typ or typ in ("SMB_CONTACTS", "READ", "SENT", "DELIVERY") or d not in ("In", "Out"):
+            continue
+        if typ == "REACT" and d == "In":      # a customer's emoji reaction asks for nothing
             continue
         key = r.get(W + "Member_Id") or (r.get(W + "From") if d == "In" else r.get(W + "To"))
         c = conv.setdefault(key, {"pend": [], "name": None, "tel": None, "ins": 0, "waits": [], "last_in": None})
@@ -107,13 +109,33 @@ def whatsapp_status(z, now):
             if c["pend"]:
                 c["waits"].append((datetime.fromisoformat(t) - datetime.fromisoformat(c["pend"][0][0])).total_seconds() / 60)
             c["pend"] = []
+    # service providers (groomers, vets, nurses) also write to this number: tell them apart by the Partner phone list
+    ppath = os.path.join(HERE, "raw", "partner_phones.json")
+    try:
+        with open(ppath) as f:
+            pc = json.load(f)
+    except (OSError, ValueError):
+        pc = {}
+    if time.time() - pc.get("t", 0) > 3600:
+        try:
+            pr = z.all("select Name, Phone_Number from Partner where Phone_Number is not null")
+            pc = {"t": time.time(), "p": {"".join(ch for ch in (r.get("Phone_Number") or "") if ch.isdigit())[-8:]: r.get("Name") for r in pr}}
+            with open(ppath, "w") as f:
+                json.dump(pc, f)
+        except SystemExit as e:
+            print("WARNING provider phone list could not be read:", str(e)[:120])
+    provs = {k: v for k, v in (pc.get("p") or {}).items() if len(k) == 8}
     today = now.date().isoformat()
-    out = {"answered": 0, "convs": 0, "waiting": [], "urgent_after": URGENT_AFTER_MIN, "window_h": 48}
+    out = {"answered": 0, "convs": 0, "waiting": [], "urgent_after": URGENT_AFTER_MIN, "window_h": 48,
+           "seg": {"cust": {"convs": 0, "answered": 0}, "prov": {"convs": 0, "answered": 0}}}
     waits_today = []
     for c in conv.values():
         if not c["ins"]:
             continue
         out["convs"] += 1
+        pname = provs.get((c["tel"] or "")[-8:])
+        seg = out["seg"]["prov" if pname else "cust"]
+        seg["convs"] += 1
         pend = c["pend"]
         # a closing "thanks / ok / emoji" needs no reply
         def closer(p):
@@ -123,6 +145,7 @@ def whatsapp_status(z, now):
             pend = []
         if not pend:
             out["answered"] += 1
+            seg["answered"] += 1
         else:
             mins = int((now - datetime.fromisoformat(pend[0][0])).total_seconds() // 60)
             txt = " ".join(p[2] for p in pend).lower()
@@ -131,8 +154,10 @@ def whatsapp_status(z, now):
             if not name or name.lower().startswith("unknown") or name.replace(" ", "").replace("+", "").isdigit():
                 name = None
             out["waiting"].append({"name": name, "tel": c["tel"], "since": pend[0][0], "mins": mins, "n": len(pend),
-                                   "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word)})
-        if c["last_in"] and c["last_in"][:10] == today:
+                                   "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word), "prov": bool(pname)})
+            if pname:
+                out["waiting"][-1]["name"] = pname
+        if c["last_in"] and c["last_in"][:10] == today and not pname:
             waits_today += c["waits"][-3:]
     # a number the WhatsApp log has no name for: look it up in the customer list (found names are remembered,
     # misses are retried after an hour)
