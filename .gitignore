@@ -1,0 +1,6 @@
+raw/
+out/
+logs/
+.publish/
+.DS_Store
+config.json

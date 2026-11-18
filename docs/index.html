@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pawkit CS360</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3fbf9; --surface:#ffffff; --line:#d8ebe7; --ink:#263d39; --ink2:#4f5f5c; --ink3:#7b8a87;
+    --head:#25434d; --brand:#007f78; --brand2:#00a79d; --brand-soft:#e8f8f5; --mint:#e9fffb;
+    --s1:#007f78; --s2:#eb6834;
+    --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c-other:#a8a7a1;
+    --good:#1a7f37; --good-bg:#e6f4ea; --warn:#9a6700; --warn-bg:#fff4d6; --bad:#c62828; --bad-bg:#fdecea;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0f1716; --surface:#16211f; --line:#26332f; --ink:#e8f1ef; --ink2:#b9c9c5; --ink3:#83948f;
+    --head:#d6ece7; --brand:#2bb3a8; --brand2:#3cc9bd; --brand-soft:#173430; --mint:#132a27;
+    --s1:#2bb3a8; --s2:#d95926;
+    --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c-other:#6b6a64;
+    --good:#4cc26a; --good-bg:#16291c; --warn:#e0b341; --warn-bg:#2d2512; --bad:#ef6b6b; --bad-bg:#331a1a;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0f1716; --surface:#16211f; --line:#26332f; --ink:#e8f1ef; --ink2:#b9c9c5; --ink3:#83948f;
+    --head:#d6ece7; --brand:#2bb3a8; --brand2:#3cc9bd; --brand-soft:#173430; --mint:#132a27;
+    --s1:#2bb3a8; --s2:#d95926;
+    --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c-other:#6b6a64;
+    --good:#4cc26a; --good-bg:#16291c; --warn:#e0b341; --warn-bg:#2d2512; --bad:#ef6b6b; --bad-bg:#331a1a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Lato,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:14px}
+h1{font-size:22px;margin:0;color:var(--head);font-weight:900;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.logo{height:34px;width:auto;display:block}
+.logo-d{display:none}
+.brandbar{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(0,60,55,.06)}
+.brandbar .wrap{padding-top:12px;padding-bottom:12px}
+.eyebrow{color:var(--brand2);text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}
+h1 small{color:var(--ink3);font-weight:500;font-size:14px;margin-left:6px}
+.spacer{flex:1}
+.updated{color:var(--ink3);font-size:13px}
+select,button,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+button{cursor:pointer}
+button.primary{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:700}
+button.primary:hover{background:var(--brand2);border-color:var(--brand2)}
+:root[data-theme="dark"] button.primary{color:#0b0b0b}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 1px 3px rgba(0,60,55,.04);padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 4px;color:var(--head);font-weight:700}
+.card .sub{color:var(--ink3);font-size:13px;margin:0 0 12px}
+.grid{display:grid;gap:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.tile{background:var(--mint);border:1px solid var(--line);border-radius:18px;padding:14px}
+.tile .k{color:var(--ink2);font-size:13px}
+.tile .v{font-size:30px;font-weight:900;color:var(--head);letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .d{color:var(--ink3);font-size:12.5px;margin-top:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink2);font-weight:600;font-size:12.5px;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12.5px;white-space:nowrap;border:1px solid var(--line);color:var(--ink2)}
+.pill.on{background:var(--good-bg);color:var(--good);border-color:transparent}
+.pill.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+.pill.brand{background:var(--brand-soft);color:var(--brand);border-color:transparent}
+.flags{display:flex;flex-direction:column;gap:8px}
+.flag{padding:9px 12px;border-radius:8px;font-size:14px}
+.flag.warn{background:var(--warn-bg);color:var(--warn)}
+.flag.bad{background:var(--bad-bg);color:var(--bad)}
+.flag.good{background:var(--good-bg);color:var(--good)}
+.sched td,.sched th{text-align:center;white-space:nowrap}
+.sched td:first-child,.sched th:first-child{text-align:left}
+.sched td.today,.sched th.today{background:var(--brand-soft)}
+.code{font-weight:600;font-size:13px}
+.code.OFF{color:var(--ink3);font-weight:400}
+.code.LEAVE,.code.SICK{color:var(--warn)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink2);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .axis text{fill:var(--ink3);font-size:11px}
+.chart .grid line{stroke:var(--line)}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12.5px;padding:6px 9px;border-radius:7px;white-space:nowrap;transform:translate(-50%,-100%);margin-top:-8px;display:none;z-index:2}
+.muted{color:var(--ink3)}
+.area{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* gate */
+#gate{min-height:100vh;background:radial-gradient(1200px 500px at 80% -10%,var(--mint),transparent),var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
+#gate form{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:0 10px 30px rgba(0,60,55,.08);padding:26px;width:100%;max-width:360px}
+#gate h1{margin-bottom:6px;font-size:24px}
+#gate .logo{height:40px}
+#gate p{color:var(--ink2);margin:0 0 16px;font-size:14px}
+#gate input[type=password]{width:100%;margin-bottom:10px;padding:10px 12px}
+#gate label{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink2);margin-bottom:14px}
+#gate button{width:100%;padding:10px}
+#err{color:var(--bad);font-size:13px;min-height:18px;margin-top:8px}
+#app{display:none}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:0 0 16px;scrollbar-width:none}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--ink2);padding:9px 12px;white-space:nowrap;font-weight:550}
+.tabs{border-bottom:0;gap:6px}
+.tabs button{border:1px solid transparent;border-radius:999px;padding:8px 16px;font-weight:700}
+.tabs button:hover{background:var(--brand-soft)}
+.tabs button[aria-selected="true"]{color:#fff;background:var(--brand);border-color:var(--brand)}
+section[data-panel]{display:none}
+section[data-panel].active{display:block}
+.tl{min-width:640px;font-size:13px}
+.tl .row{display:grid;grid-template-columns:110px 1fr;align-items:center;min-height:34px;border-bottom:1px solid var(--line)}
+.tl .name{color:var(--ink);padding-right:8px}
+.tl .name small{display:block;color:var(--ink3);font-size:11.5px}
+.tl .track{position:relative;height:34px}
+.tl .bar{position:absolute;top:8px;height:18px;border-radius:5px;background:var(--brand);color:#fff;font-size:11.5px;line-height:18px;padding:0 6px;overflow:hidden;white-space:nowrap}
+:root[data-theme="dark"] .tl .bar{color:#0b0b0b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tl .bar{color:#0b0b0b}}
+.tl .bar.mgr{background:var(--ink3)}
+.tl .bar.unk{background:repeating-linear-gradient(45deg,var(--brand-soft) 0 6px,transparent 6px 12px);color:var(--ink2);border:1px dashed var(--brand)}
+.tl .tag{position:absolute;top:8px;left:0;font-size:12px;color:var(--ink3);line-height:18px}
+.tl .hours{position:relative;height:20px}
+.tl .hours span{position:absolute;transform:translateX(-50%);color:var(--ink3);font-size:11px}
+.tl .gridl{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.tl .nowl{position:absolute;top:0;bottom:0;width:2px;background:var(--bad);z-index:1}
+.tl .cov{display:flex;height:26px;gap:1px}
+.tl .cov div{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:3px;font-variant-numeric:tabular-nums}
+.c0{background:var(--bad-bg);color:var(--bad)} .c1{background:var(--warn-bg);color:var(--warn)} .c2{background:var(--brand-soft);color:var(--brand)} .c3{background:var(--good-bg);color:var(--good)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo{filter:brightness(0) invert(1) opacity(.92)}}
+:root[data-theme="dark"] .logo{filter:brightness(0) invert(1) opacity(.92)}
+.board-card{padding:18px 18px 8px}
+.board-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+.board-tools{display:flex;gap:8px;flex-wrap:wrap}
+.board-tools input{min-width:180px}
+.grp{margin-bottom:22px}
+.grp-h{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;margin:0 0 6px;background:none;border:0;padding:4px 0;color:var(--gc);font-weight:900;font-size:16px}
+.grp-h .chev{transition:transform .15s;display:inline-block;font-size:12px}
+.grp.fold .chev{transform:rotate(-90deg)}
+.grp.fold .grp-b{display:none}
+.grp-h .n{color:var(--ink3);font-weight:400;font-size:13px}
+.grp-b{border-left:5px solid var(--gc);border-radius:8px;overflow-x:auto;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.btbl{width:100%;border-collapse:separate;border-spacing:0;min-width:820px;table-layout:fixed}
+.btbl th{font-size:12px;color:var(--ink3);font-weight:600;text-align:center;padding:8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.btbl td{padding:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);height:44px;text-align:center;vertical-align:middle;font-size:13.5px;overflow:hidden;text-overflow:ellipsis}
+.btbl th:first-child,.btbl td:first-child{text-align:left}
+.btbl td.t{padding:8px 12px}
+.btbl tr:last-child td{border-bottom:0}
+.btbl tr:hover td{background:var(--brand-soft)}
+.btbl tr:hover td.lab{filter:brightness(1.04)}
+.btbl td.lab{color:#fff;font-weight:700;font-size:12.5px;padding:0 10px;white-space:nowrap}
+.av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;color:#fff;font-size:11.5px;font-weight:700;vertical-align:middle}
+.ownc{display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;white-space:nowrap}
+.ownc span{font-size:12.5px;color:var(--ink2)}
+.due{white-space:nowrap;padding:0 8px}
+.due.over{color:var(--bad);font-weight:700}
+.due.today{color:var(--warn);font-weight:700}
+.tsub{color:var(--ink3);font-size:12px;display:block;margin-top:2px}
+.sum td{height:30px;background:var(--bg)}
+.bar100{display:flex;height:18px;border-radius:4px;overflow:hidden;margin:0 8px}
+.bar100 i{display:block;height:100%}
+.rangebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;border-radius:999px;padding:6px 16px;font-weight:700;color:var(--ink2)}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff}
+.rangelabel{color:var(--ink2);font-weight:700}
+.tile.click{cursor:pointer;transition:box-shadow .12s,border-color .12s}
+.tile.click:hover{border-color:var(--brand2)}
+.tile.click.on{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand) inset}
+.datepick{display:inline-flex;align-items:center;gap:4px}
+.datepick button{padding:6px 11px;font-weight:700}
+.datepick input{padding:6px 12px}
+.todaybtn{font-weight:700}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal .h{font-size:12px;color:var(--ink3);text-align:center;font-weight:700;padding-bottom:2px}
+.cal button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:64px;padding:7px 9px;border-radius:12px;background:var(--surface);border:1px solid var(--line);text-align:left;font-size:12px;color:var(--ink2)}
+.cal button:hover{border-color:var(--brand2);background:var(--brand-soft)}
+.cal button .dn{font-weight:900;font-size:15px;color:var(--head)}
+.cal button.today{box-shadow:0 0 0 2px var(--brand2) inset}
+.cal button.sel{background:var(--brand);border-color:var(--brand);color:#fff}
+.cal button.sel .dn{color:#fff}
+.cal button:disabled{opacity:.45;cursor:default;background:transparent}
+.cal .blank{min-height:64px}
+@media (max-width:560px){.cal button{min-height:52px;padding:5px}.cal button .vi{display:none}}
+footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
+</style>
+</head>
+<body>
+<div id="gate">
+  <form id="gateForm" autocomplete="off">
+    <img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit">
+    <div class="eyebrow" style="margin-top:16px">Internal · CS360</div>
+    <h1 style="margin:4px 0 6px">Customer service, at a glance</h1>
+    <p>Internal page for the Pawkit team. Enter the team passcode.</p>
+    <input id="pw" type="password" placeholder="Team passcode" aria-label="Team passcode" autofocus>
+    <label><input id="remember" type="checkbox" checked> Remember on this device</label>
+    <button class="primary" type="submit">Open</button>
+    <div id="err" role="alert"></div>
+  </form>
+</div>
+
+<div id="app">
+ <div class="brandbar"><div class="wrap" style="padding-top:12px;padding-bottom:12px"><header style="margin:0">
+    <h1><img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit"><span>CS360</span></h1>
+    <span class="spacer"></span>
+    <label class="updated" for="day">Day</label>
+    <select id="day" aria-label="Pick a day"></select>
+    <span class="updated" id="updated"></span>
+    <button id="lock" title="Forget the passcode on this device">Lock</button>
+  </header></div></div>
+ <div class="wrap">
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="overview">Overview</button>
+    <button role="tab" data-tab="schedule">Schedule</button>
+    <button role="tab" data-tab="bookings">Bookings</button>
+    <button role="tab" data-tab="whatsapp">WhatsApp</button>
+    <button role="tab" data-tab="tasks">Tasks</button>
+    <button role="tab" data-tab="orders">Orders</button>
+    <button role="tab" data-tab="xero">Xero</button>
+    <button role="tab" data-tab="leave">Leave</button>
+    <button role="tab" data-tab="complaints">Complaints</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section data-panel="overview">
+    <div id="flags" class="flags" style="margin-bottom:14px"></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <h2>Who is working</h2>
+      <p class="sub" id="whoSub"></p>
+      <div class="tablewrap"><table id="who"></table></div>
+    </div>
+  </section>
+
+  <!-- SCHEDULE -->
+  <section data-panel="schedule">
+    <div class="card">
+      <h2 id="tlTitle">Coverage</h2>
+      <p class="sub">Each bar is a shift, Singapore time, 7am to 11pm. The red line is the time now. The bottom row counts human agents on shift each half hour.</p>
+      <div class="tablewrap"><div id="timeline"></div></div>
+    </div>
+    <div class="card">
+      <h2>Week schedule</h2>
+      <p class="sub" id="weekSub">From the Pawkit CS Team Schedule Tracker.</p>
+      <div class="tablewrap"><table class="sched" id="week"></table></div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <h2>Coverage checks for the week</h2>
+        <p class="sub">Each day is checked for someone on at 8am (weekdays), someone on at 9:30pm, and at least three human agents.</p>
+        <div class="tablewrap"><table id="weekChecks"></table></div>
+      </div>
+      <div class="card">
+        <h2>Shift codes</h2>
+        <p class="sub">The tracker says these hours are placeholders until the team confirms them.</p>
+        <div class="tablewrap"><table id="codes"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOOKINGS -->
+  <section data-panel="bookings">
+    <div class="rangebar"><div class="seg" role="group" aria-label="Range" id="bkRange"><button data-r="day">Day</button><button data-r="week">Week</button><button data-r="month">Month</button></div>
+      <div class="datepick"><button id="bkPrev" aria-label="Previous" title="Previous">‹</button><input id="bkDate" type="date" aria-label="Pick a date"><button id="bkNext" aria-label="Next" title="Next">›</button><button id="bkToday" class="todaybtn">Today</button></div>
+      <span id="bkRangeLabel" class="rangelabel"></span></div>
+    <div class="card" id="bkCalCard" style="display:none">
+      <h2 id="bkCalTitle">Pick a day</h2>
+      <p class="sub">Each day shows bookings made and visits. Click a day to open it.</p>
+      <div id="bkCal"></div>
+    </div>
+    <div class="tiles" id="bkTiles"></div>
+    <div class="two">
+      <div class="card">
+        <h2 id="bkChartTitle">Bookings made per day</h2>
+        <p class="sub">New bookings created in Zoho CRM each day, split by type of service. Singapore time. Hover for the breakdown; click a bar to open that day.</p>
+        <div class="legend" id="bkLegend"></div>
+        <div class="chart" id="bkChart"></div>
+      </div>
+      <div class="card">
+        <h2>Bookings made, by person</h2>
+        <p class="sub">Real bookings only, created in Zoho CRM: new enquiries, not-fulfilled and archived records are left out, and so is Kent William (admin). Cancelled bookings still count.</p>
+        <div class="tablewrap"><table id="byPerson"></table></div>
+        <p class="sub" style="margin:8px 0 0">"charlene oh" also covers bookings created by forms and automations that run under Charlene's login (not confirmed).</p>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="visitsTitle">Visits</h2>
+      <p class="sub" id="visitsSub">Click a tile above to change this list. No customer details are shown on this page.</p>
+      <div class="tablewrap" style="max-height:560px;overflow:auto"><table id="visits"></table></div>
+    </div>
+    <div class="card">
+      <h2>Visits by service</h2>
+      <p class="sub" id="bySvcSub"></p>
+      <div class="tablewrap"><table id="bySvc"></table></div>
+    </div>
+  </section>
+
+  <!-- WHATSAPP -->
+  <section data-panel="whatsapp">
+    <div class="tiles" id="waTiles"></div>
+    <div class="card">
+      <h2>WhatsApp messages per day</h2>
+      <p class="sub">All one-to-one WhatsApp messages logged in Zoho CRM (WOZTELL). Group chats are not counted. WOZTELL logs every Pawkit message as "LiveChat / API", so there is no split by human agent. Click a bar to pick that day.</p>
+      <div class="legend"><span><i style="background:var(--s1)"></i>From customers</span><span><i style="background:var(--s2)"></i>From Pawkit</span></div>
+      <div class="chart" id="waChart"></div>
+    </div>
+    <div class="card">
+      <h2>Day by day</h2>
+      <div class="tablewrap"><table id="waTable"></table></div>
+    </div>
+  </section>
+
+  <!-- TASKS -->
+  <section data-panel="tasks">
+    <div class="tiles" id="tkTiles"></div>
+    <div class="card board-card">
+      <div class="board-head">
+        <div><h2>Tasks board</h2><p class="sub" style="margin:0">Tasks from Zoho CRM, grouped by status. Click a group to fold it.</p></div>
+        <div class="board-tools">
+          <input id="tkSearch" type="search" placeholder="Search tasks" aria-label="Search tasks">
+          <select id="tkOwner" aria-label="Filter by person"><option value="">Everyone</option></select>
+        </div>
+      </div>
+      <div id="board"></div>
+    </div>
+  </section>
+
+  <!-- ORDERS -->
+  <section data-panel="orders">
+    <div class="tiles" id="opTiles"></div>
+    <div class="card">
+      <h2>Order processing</h2>
+      <p class="sub">From the Order Processing module in Zoho CRM: product and service orders, delivery and payment.</p>
+      <div class="tablewrap"><table id="opTable"></table></div>
+    </div>
+  </section>
+
+  <!-- XERO -->
+  <section data-panel="xero">
+    <div class="tiles" id="xTiles"></div>
+    <div class="two">
+      <div class="card">
+        <h2>Invoices for completed visits</h2>
+        <p class="sub">Completed bookings with a visit in the last 30 days, by the Invoice Status that Zoho CRM shows from Xero. Amounts use the booking's base price.</p>
+        <div class="tablewrap"><table id="xInv"></table></div>
+      </div>
+      <div class="card">
+        <h2>By payment method</h2>
+        <p class="sub">Same completed visits.</p>
+        <div class="tablewrap"><table id="xPay"></table></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Stock from Xero</h2>
+      <p class="sub" id="xStockSub"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input id="xSearch" type="search" placeholder="Search item or code" aria-label="Search stock" style="flex:1;min-width:180px">
+        <select id="xFilter" aria-label="Filter stock"><option value="low">Low stock (1 to 5)</option><option value="in">In stock</option><option value="out">Zero or below</option><option value="all">All items</option></select>
+      </div>
+      <div class="tablewrap" style="max-height:520px;overflow:auto"><table id="xStock"></table></div>
+    </div>
+  </section>
+
+  <!-- LEAVE -->
+  <section data-panel="leave">
+    <div class="card">
+      <h2>Leave</h2>
+      <p class="sub" id="leaveSub"></p>
+      <div class="tablewrap"><table id="leave"></table></div>
+    </div>
+    <div class="card">
+      <h2>Off and leave this week</h2>
+      <p class="sub">Rest days and leave codes from the schedule tracker.</p>
+      <div class="tablewrap"><table id="offWeek"></table></div>
+    </div>
+  </section>
+
+  <!-- COMPLAINTS -->
+  <section data-panel="complaints">
+    <div class="tiles" id="cpTiles"></div>
+    <div class="card">
+      <h2>Complaints</h2>
+      <p class="sub">From the Complaints module in Zoho CRM, newest first. "Issue" and "Outcome" are short summaries of the description and resolution in Zoho; hover over them to read the original text.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input id="cpSearch" type="search" placeholder="Search issue, provider or number" aria-label="Search complaints" style="flex:1;min-width:180px">
+        <select id="cpFilter" aria-label="Filter complaints"><option value="all">All complaints</option><option value="open">Not closed</option><option value="30">Last 30 days</option><option value="late">Late arrival</option><option value="quality">Grooming or service quality</option><option value="noshow">No show</option><option value="refund">Refunds</option></select>
+      </div>
+      <div class="tablewrap"><table id="comp"></table></div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <h2>By category</h2>
+        <div class="tablewrap"><table id="cpCat"></table></div>
+      </div>
+      <div class="card">
+        <h2>By provider</h2>
+        <p class="sub">Providers with the most complaints logged.</p>
+        <div class="tablewrap"><table id="cpProv"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+ </div>
+</div>
+
+<div class="tip" id="tip"></div>
+<script src="data.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KEY='pawkit-cs360-pw';
+const LIVE_URL='https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/data/data.json';
+let PW=null;
+const store={get(){try{return localStorage.getItem(KEY)}catch(e){return null}},set(v){try{localStorage.setItem(KEY,v)}catch(e){}},del(){try{localStorage.removeItem(KEY)}catch(e){}}};
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+
+async function decrypt(pw,E){
+  E=E||window.CS360_DATA; if(!E) throw new Error('nodata');
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(E.salt),iterations:E.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(E.iv)},key,b64(E.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function open(pw,remember){
+  let D;
+  try{ D=await decrypt(pw); }
+  catch(e){ $('err').textContent = e.message==='nodata' ? 'No data published yet.' : 'That passcode did not work.'; store.del(); return; }
+  PW=pw; if(remember) store.set(pw); $('gate').style.display='none'; $('app').style.display='block';
+  try{ init(D); }catch(e){ console.error(e); const m=document.createElement('div'); m.className='flag bad'; m.style.margin='16px'; m.textContent='Something went wrong showing the page: '+e.message; document.body.prepend(m); }
+}
+$('gateForm').addEventListener('submit',e=>{e.preventDefault(); $('err').textContent='Opening…'; open($('pw').value.trim(),$('remember').checked);});
+$('lock').addEventListener('click',()=>{store.del(); location.reload();});
+const saved=store.get(); if(saved) open(saved,true);
+
+// ---------- helpers ----------
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dparts=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d));};
+const fmtDay=s=>{const d=dparts(s);return DOW[d.getUTCDay()]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];};
+const shortDay=s=>{const d=dparts(s);return d.getUTCDate()+'';};
+const addDays=(s,n)=>{const d=dparts(s);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+const sgNow=()=>{const n=new Date(Date.now()+8*3600e3);return {day:n.toISOString().slice(0,10),min:n.getUTCHours()*60+n.getUTCMinutes()};};
+const dayOf=iso=>iso?iso.slice(0,10):null;          // CRM times come with +08:00
+const timeOf=iso=>iso?iso.slice(11,16):'';
+const toMin=t=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
+const t12=t=>{let [h,m]=t.split(':').map(Number);const ap=h>=12?'pm':'am';h=h%12||12;return h+(m?':'+String(m).padStart(2,'0'):'')+ap;};
+const cnt=(arr,f)=>{const o={};arr.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+1;});return o;};
+
+let D, CFG;
+function init(data){
+  D=data; CFG=data.config;
+  const days=Object.keys(D.wa).sort();
+  const today=sgNow().day;
+  const sel=$('day');
+  sel.innerHTML=days.slice().reverse().map(d=>`<option value="${d}">${fmtDay(d)}${d===today?' (today)':''}</option>`).join('');
+  sel.value=days.includes(today)?today:days[days.length-1];
+  sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; render(sel.value);});
+  const TABS=[...document.querySelectorAll('#tabs button')];
+  const showTab=t=>{ if(!TABS.some(b=>b.dataset.tab===t)) t='overview';
+    TABS.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+    document.querySelectorAll('section[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===t));
+    try{history.replaceState(null,'','#'+t)}catch(e){} };
+  TABS.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+  window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
+  showTab(location.hash.slice(1)||'overview');
+  $('xSearch').addEventListener('input',renderStock); $('cpSearch').addEventListener('input',renderComplaints); document.querySelectorAll('#bkRange button').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.r))); $('bkDate').addEventListener('change',e=>{if(e.target.value){BK_DAY=e.target.value; renderBookings(BK_DAY);}}); $('bkPrev').addEventListener('click',()=>bkStep(-1)); $('bkNext').addEventListener('click',()=>bkStep(1)); $('bkToday').addEventListener('click',()=>{BK_DAY=sgNow().day; renderBookings(BK_DAY);}); $('tkSearch').addEventListener('input',renderBoard); $('tkOwner').addEventListener('change',renderBoard); $('cpFilter').addEventListener('change',()=>{renderComplaints(); document.querySelectorAll('#cpTiles .tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===$('cpFilter').value));}); $('xFilter').addEventListener('change',renderStock);
+  showUpdated();
+  try{ render(sel.value); }
+  finally{ pullLive(); setInterval(pullLive,5*60*1000); setInterval(showUpdated,60*1000); }
+}
+function showUpdated(){
+  const g=new Date(D.generated), mins=Math.round((Date.now()-g)/60000);
+  const at=D.generated.slice(8,10)+' '+MON[+D.generated.slice(5,7)-1]+', '+t12(D.generated.slice(11,16));
+  const el=$('updated'); el.textContent=(mins<=12?'● Live · ':'')+'Updated '+at+' SGT'+(mins>12?' ('+(mins<120?mins+' min':Math.round(mins/60)+' h')+' ago)':'');
+  el.style.color=mins<=12?'var(--good)':mins>60?'var(--warn)':'';
+}
+let USER_PICKED=false;
+async function pullLive(){
+  let N;
+  try{
+    const r=await fetch(LIVE_URL+'?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
+    N=await decrypt(PW,await r.json());
+  }catch(e){ console.warn('live update skipped',e); return; }
+  if(N.generated<=D.generated) return;
+  const prevD=D, prevC=CFG, sel=$('day'), cur=sel.value, prevHTML=sel.innerHTML, today=sgNow().day;
+  try{
+    D=N; CFG=N.config;
+    const days=Object.keys(D.wa).sort();
+    sel.innerHTML=days.slice().reverse().map(d=>`<option value="${d}">${fmtDay(d)}${d===today?' (today)':''}</option>`).join('');
+    sel.value=(!USER_PICKED||!days.includes(cur))?(days.includes(today)?today:days[days.length-1]):cur;
+    render(sel.value); showUpdated();
+  }catch(e){
+    console.error('live update failed',e);
+    D=prevD; CFG=prevC; sel.innerHTML=prevHTML; sel.value=cur;
+    try{ render(cur); }catch(_){}
+    const el=$('updated'); el.textContent='Live update failed, showing '+D.generated.slice(11,16)+' data'; el.style.color='var(--bad)';
+  }
+}
+
+function shiftHours(code){const c=CFG.shift_codes[code];return c?c.hours:[];}
+function hoursText(code){const h=shiftHours(code);return h.length?h.map(([a,b])=>t12(a)+'–'+t12(b)).join(', '):'';}
+function onAt(code,min){return shiftHours(code).some(([a,b])=>min>=toMin(a)&&min<toMin(b));}
+
+function render(day){
+  const now=sgNow(); const isToday=day===now.day;
+  const roster=CFG.roster[day]||null;
+  const wa=D.wa[day]||{in:0,out:0,chats:0};
+  const made=D.created.filter(r=>dayOf(r.c)===day);
+  const vis=D.visits.filter(r=>dayOf(r.d)===day);
+  const vs=cnt(vis,r=>r.s||'No status');
+  const openComp=D.comp.filter(c=>!['Resolved','Closed'].includes(c.s));
+  const agents=CFG.people.filter(p=>p.agent);
+
+  // ---- flags ----
+  const flags=[];
+  if(roster){
+    const on=agents.filter(p=>shiftHours(roster[p.name]).length);
+    if(on.length<=2) flags.push(['warn',`Only ${on.length} human agent${on.length===1?'':'s'} on shift on ${fmtDay(day)}.`]);
+    const dow=dparts(day).getUTCDay();
+    if(dow>=1&&dow<=5&&!agents.some(p=>onAt(roster[p.name],toMin('08:00')))) flags.push(['warn','Nobody starts at 8am, before the 9:30am Silver Sky run.']);
+    const late=agents.some(p=>onAt(roster[p.name],toMin('21:30')));
+    if(!late) flags.push(['warn','No human agent on shift at 9:30pm.']);
+    if(isToday){
+      const nowOn=agents.filter(p=>onAt(roster[p.name],now.min));
+      if(!nowOn.length && now.min>=toMin('09:00') && now.min<toMin('22:00')) flags.push(['bad','No human agent is on shift right now.']);
+    }
+  } else flags.push(['warn','No schedule for this day in the tracker yet.']);
+  if(openComp.length) flags.push(['bad',`${openComp.length} complaint${openComp.length===1?'':'s'} not closed in Zoho CRM.`]);
+  if((vs['To be Rescheduled']||0)+(vs['Pending Provider Time Slot']||0)+(vs['Pending Owner Confirmation']||0)) flags.push(['warn',`${(vs['To be Rescheduled']||0)+(vs['Pending Provider Time Slot']||0)+(vs['Pending Owner Confirmation']||0)} visit${vis.length===1?'':'s'} on this day still pending or to be rescheduled.`]);
+  $('flags').innerHTML=flags.map(([k,t])=>`<div class="flag ${k}">${esc(t)}</div>`).join('');
+
+  // ---- tiles ----
+  const onCount=roster?agents.filter(p=>shiftHours(roster[p.name]).length).length:'–';
+  const tile=(k,v,d)=>`<div class="tile"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  $('tiles').innerHTML=
+    tile('Human agents on shift',onCount,roster?agents.length+' in the team':'') +
+    tile('WhatsApp from customers',wa.in.toLocaleString(),wa.chats+' customers messaged') +
+    tile('WhatsApp from Pawkit',wa.out.toLocaleString(),'replies and templates') +
+    tile('Bookings made',made.length,'created in Zoho CRM') +
+    tile('Visits',vis.length,[vs.Completed?vs.Completed+' completed':'',vs.Scheduled?vs.Scheduled+' scheduled':'',vs.Cancelled?vs.Cancelled+' cancelled':''].filter(Boolean).join(' · ')) +
+    tile('Open complaints',openComp.length,D.comp.length+' logged in total') +
+    tile('Open tasks',(D.tasks||[]).filter(t=>!['Completed','Cancelled','Deferred'].includes(t.s)).length,'in Zoho CRM');
+
+  // ---- who is working ----
+  $('whoSub').textContent = isToday ? 'Today, '+fmtDay(day)+'. Green means on shift right now.' : fmtDay(day)+'.';
+  $('who').innerHTML='<tr><th>Name</th><th>Role</th><th>Shift</th><th>Hours</th></tr>'+CFG.people.map(p=>{
+    const code=roster?roster[p.name]:null;
+    let st='';
+    if(code){ if(isToday&&onAt(code,now.min)) st=' <span class="pill on">on now</span>'; else if(['LEAVE','SICK'].includes(code)) st=' <span class="pill warn">'+esc((CFG.shift_codes[code]||{}).label||code)+'</span>'; }
+    return `<tr><td>${esc(p.name)}${st}</td><td class="muted">${esc(p.role)}</td><td><span class="code ${esc(code||'')}">${esc(code||'–')}</span></td><td class="muted">${esc(code?(hoursText(code)||(CFG.shift_codes[code]||{}).label||code):'')}</td></tr>`;}).join('');
+
+  const days=Object.keys(D.wa).sort();
+
+  // ---- charts ----
+  barChart($('waChart'),days,[{key:'in',color:'var(--s1)',label:'From customers'},{key:'out',color:'var(--s2)',label:'From Pawkit'}],d=>D.wa[d],day);
+  renderBookings(BK_DAY||day);
+
+
+  // ---- week ----
+  const rdays=Object.keys(CFG.roster).sort();
+  const wk=rdays.filter(d=>Math.abs(dparts(d)-dparts(day))<7*864e5);
+  const weekDays=wk.length?wk:rdays.slice(-7);
+  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[weekDays.length-1])+'.';
+  $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===day?'today':''}">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
+    CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td class="${d===day?'today':''}"><span class="code ${esc(c)}">${esc(c||'–')}</span></td>`;}).join('')+'</tr>').join('')+
+    '<tr><th>Human agents on</th>'+weekDays.map(d=>`<th class="${d===day?'today':''}">${agents.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>';
+  $('codes').innerHTML='<tr><th>Code</th><th>Meaning</th><th>Hours</th></tr>'+Object.entries(CFG.shift_codes).map(([k,v])=>`<tr><td><span class="code ${k}">${k}</span></td><td>${esc(v.label)}</td><td class="muted">${esc(hoursText(k))}</td></tr>`).join('');
+
+  // ---- leave ----
+  $('leaveSub').textContent=CFG.leave.length?'From the Leave log in the schedule tracker.':CFG.leave_note;
+  const lv=CFG.leave.slice().sort((a,b)=>a.from.localeCompare(b.from));
+  $('leave').innerHTML='<tr><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Approved by</th></tr>'+(lv.length?lv.map(l=>`<tr><td>${esc(l.name)}</td><td>${esc(l.type)}</td><td>${esc(fmtDay(l.from))}</td><td>${esc(fmtDay(l.to))}</td><td>${esc(l.approved_by||'Waiting')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No leave logged.</td></tr>');
+
+  // ---- complaints ----
+  const since=addDays(now.day,-30);
+  const cDay=c=>dayOf(c.cd||c.c)||'';
+  const recent=D.comp.filter(c=>cDay(c)>=since);
+  const late=D.comp.filter(c=>c.cat==='Late Arrival');
+  const ctile=(f,k,v,d)=>`<div class="tile click${$('cpFilter').value===f?' on':''}" role="button" tabindex="0" data-f="${f}" title="Show only these complaints"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  const firstC=D.comp.map(cDay).filter(Boolean).sort()[0];
+  $('cpTiles').innerHTML=ctile('all','Complaints logged',D.comp.length,firstC?'since '+fmtDay(firstC):'')+
+    ctile('open','Not closed',openComp.length,openComp.map(c=>c.n).join(', '))+ctile('30','Last 30 days',recent.length,'')+
+    ctile('late','Late arrivals',late.length,Math.round(late.length/Math.max(1,D.comp.length)*100)+'% of all complaints')+
+    ctile('refund','Refunds',D.comp.filter(c=>c.rf).length,'$'+D.comp.reduce((x,c)=>x+(c.ra||0),0)+' refunded');
+  $('cpTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{$('cpFilter').value=t.dataset.f; renderComplaints(); $('cpTiles').querySelectorAll('.tile.click').forEach(x=>x.classList.toggle('on',x===t)); $('comp').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
+  const cc=cnt(D.comp,c=>c.cat||'No category'), c30=cnt(recent,c=>c.cat||'No category');
+  $('cpCat').innerHTML='<tr><th>Category</th><th class="num">30 days</th><th class="num">All</th></tr>'+Object.keys(cc).sort((x,y)=>cc[y]-cc[x]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${c30[k]||0}</td><td class="num">${cc[k]}</td></tr>`).join('');
+  const cpv=cnt(D.comp,c=>c.p||'No provider'), cpl=cnt(late,c=>c.p||'No provider'), cpr=cnt(recent,c=>c.p||'No provider');
+  $('cpProv').innerHTML='<tr><th>Provider</th><th class="num">Late</th><th class="num">30 days</th><th class="num">All</th></tr>'+Object.keys(cpv).sort((x,y)=>cpv[y]-cpv[x]).slice(0,10).map(k=>`<tr><td>${esc(k)}</td><td class="num">${cpl[k]||0}</td><td class="num">${cpr[k]||0}</td><td class="num">${cpv[k]}</td></tr>`).join('');
+  renderComplaints();
+
+  // ---- schedule: timeline ----
+  const T0=7*60, T1=23*60, pct=m=>((Math.min(Math.max(m,T0),T1)-T0)/(T1-T0)*100);
+  $('tlTitle').textContent='Coverage on '+fmtDay(day);
+  let tl='<div class="tl"><div class="row"><div></div><div class="hours">';
+  for(let h=7;h<=21;h+=2) tl+=`<span style="left:${pct(h*60)}%">${t12(String(h).padStart(2,'0')+':00')}</span>`;
+  tl+='</div></div>';
+  const grid=()=>{let g='';for(let h=8;h<23;h++) g+=`<div class="gridl" style="left:${pct(h*60)}%"></div>`; if(isToday&&now.min>=T0&&now.min<=T1) g+=`<div class="nowl" style="left:${pct(now.min)}%" title="Now"></div>`; return g;};
+  CFG.people.forEach(p=>{
+    const code=roster?roster[p.name]:null, hrs=code?shiftHours(code):[];
+    let bars='';
+    if(hrs.length) bars=hrs.map(([a,b])=>`<div class="bar ${p.agent?'':'mgr'}" style="left:${pct(toMin(a))}%;width:${pct(toMin(b))-pct(toMin(a))}%" title="${esc(p.name)}: ${esc(t12(a))}–${esc(t12(b))}">${esc(code)} ${esc(t12(a))}–${esc(t12(b))}</div>`).join('');
+    else if(code==='ON') bars=`<div class="bar unk" style="left:${pct(9*60)}%;width:${pct(18*60)-pct(9*60)}%">Working, hours not set</div>`;
+    else bars=`<div class="tag" style="left:8px">${esc(code?((CFG.shift_codes[code]||{}).label||code):'Not on the schedule')}</div>`;
+    tl+=`<div class="row"><div class="name">${esc(p.name)}<small>${esc(p.role)}</small></div><div class="track">${grid()}${bars}</div></div>`;
+  });
+  tl+='<div class="row"><div class="name">Human agents on<small>each half hour</small></div><div class="track" style="display:flex;align-items:center"><div class="cov" style="width:100%">';
+  for(let m=T0;m<T1;m+=30){ const n=roster?agents.filter(p=>onAt(roster[p.name],m)).length:0; tl+=`<div class="c${Math.min(n,3)}" title="${t12(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'))}: ${n} on">${n}</div>`; }
+  tl+='</div></div></div></div>';
+  $('timeline').innerHTML=roster?tl:'<p class="muted">No schedule for this day in the tracker yet.</p>';
+
+  // ---- schedule: week checks ----
+  $('weekChecks').innerHTML='<tr><th>Day</th><th class="num">Agents</th><th>8am</th><th>9:30pm</th><th>3+ agents</th></tr>'+weekDays.map(d=>{
+    const r=CFG.roster[d]||{}; const n=agents.filter(p=>shiftHours(r[p.name]).length).length; const dow=dparts(d).getUTCDay();
+    const am=(dow===0||dow===6)?'<span class="muted">weekend</span>':agents.some(p=>onAt(r[p.name],480))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
+    const pm=agents.some(p=>onAt(r[p.name],1290))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
+    const three=n>=3?'<span class="pill on">yes</span>':'<span class="pill warn">only '+n+'</span>';
+    return `<tr><td>${esc(fmtDay(d))}</td><td class="num">${n}</td><td>${am}</td><td>${pm}</td><td>${three}</td></tr>`;}).join('');
+
+  // ---- whatsapp tiles + table ----
+  const tin=days.reduce((a,d)=>a+D.wa[d].in,0), tout=days.reduce((a,d)=>a+D.wa[d].out,0);
+  $('waTiles').innerHTML=tile('From customers',wa.in.toLocaleString(),fmtDay(day))+tile('From Pawkit',wa.out.toLocaleString(),fmtDay(day))+
+    tile('Customers who messaged',wa.chats,fmtDay(day))+tile('Daily average',Math.round(tin/days.length).toLocaleString(),'from customers, 14 days')+
+    tile('Pawkit messages per customer message',(wa.in?(wa.out/wa.in).toFixed(2):'–'),fmtDay(day));
+  $('waTable').innerHTML='<tr><th>Day</th><th class="num">From customers</th><th class="num">From Pawkit</th><th class="num">Customers</th><th class="num">Agents on</th></tr>'+
+    days.slice().reverse().map(d=>{const w=D.wa[d],r=CFG.roster[d];return `<tr${d===day?' style="background:var(--brand-soft)"':''}><td>${esc(fmtDay(d))}</td><td class="num">${w.in}</td><td class="num">${w.out}</td><td class="num">${w.chats}</td><td class="num">${r?agents.filter(p=>shiftHours(r[p.name]).length).length:'–'}</td></tr>`;}).join('')+
+    `<tr><th>14 days</th><th class="num">${tin.toLocaleString()}</th><th class="num">${tout.toLocaleString()}</th><th></th><th></th></tr>`;
+
+  // ---- leave: off this week ----
+  $('offWeek').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th>${esc(fmtDay(d).replace(/ \w+$/,''))}</th>`).join('')+'</tr>'+
+    CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td>${['OFF','LEAVE','SICK'].includes(c)?`<span class="pill ${c==='OFF'?'':'warn'}">${esc((CFG.shift_codes[c]||{}).label||c)}</span>`:''}</td>`;}).join('')+'</tr>').join('');
+
+
+  // ---- tasks ----
+  const stPill=s=>`<span class="pill ${s==='Completed'?'on':/Waiting/.test(s||'')?'warn':s==='In Progress'?'brand':''}">${esc(s||'No status')}</span>`;
+  const T=D.tasks||[]; const OPEN_T=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
+  const tOpen=T.filter(OPEN_T);
+  const since14=addDays(now.day,-14);
+  $('tkTiles').innerHTML=tile('Open tasks',tOpen.length,T.length+' in Zoho CRM')+tile('Overdue',tOpen.filter(t=>t.due&&t.due<now.day).length,'due before today')+tile('Due today',tOpen.filter(t=>t.due===now.day).length,fmtDay(now.day))+tile('Waiting',tOpen.filter(t=>/Waiting/.test(t.s||'')).length,'on a provider, customer or approval')+tile('Done, 14 days',T.filter(t=>t.s==='Completed'&&dayOf(t.cl)>=since14).length,'');
+  const ownSel=$('tkOwner'), cur=ownSel.value; const owners=[...new Set(T.map(t=>t.own).filter(Boolean))].sort();
+  ownSel.innerHTML='<option value="">Everyone</option>'+owners.map(o=>`<option${o===cur?' selected':''}>${esc(o)}</option>`).join('');
+  renderBoard();
+
+  // ---- orders ----
+  const O=D.orders||[]; const oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s));
+  const money=v=>v==null?'':'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
+  $('opTiles').innerHTML=tile('Orders',O.length,'in Order Processing')+tile('Open',oOpen.length,'not delivered, cancelled or returned')+tile('Unpaid',O.filter(o=>['Not Invoiced','Invoiced','Partially Paid','Overdue'].includes(o.pay)).length,'by payment status')+tile('Outstanding',money(O.reduce((a,o)=>a+(o.out||0),0))||'$0','outstanding amount');
+  $('opTable').innerHTML=O.length?'<tr><th>Order</th><th>Date</th><th>Type</th><th>Status</th><th>Fulfilment</th><th>Payment</th><th>Delivery</th><th class="num">Total</th><th>Processed by</th></tr>'+O.slice().sort((a,b)=>(b.d||b.c||'').localeCompare(a.d||a.c||'')).map(o=>`<tr><td>${esc(o.n)}</td><td>${esc(dayOf(o.d||o.c)?fmtDay(dayOf(o.d||o.c)):'')}</td><td>${esc(o.type||'')}</td><td>${stPill(o.s)}</td><td class="muted">${esc(o.ful||'')}</td><td>${esc(o.pay||'')}</td><td class="muted">${esc([o.dm,o.urg].filter(Boolean).join(' · '))}</td><td class="num">${money(o.tot)}</td><td>${esc(o.by||o.agent||'')}</td></tr>`).join(''):'<tr><td class="muted">No orders in the Order Processing module yet. This tab fills in as soon as orders are logged there.</td></tr>';
+
+  // ---- xero: invoices ----
+  const done30=(D.inv||[]).filter(b=>b.s==='Completed');
+  const invC=cnt(done30,b=>b.inv||'No status'), invAmt={}; done30.forEach(b=>{const k=b.inv||'No status';invAmt[k]=(invAmt[k]||0)+(b.amt||0);});
+  const payC=cnt(done30,b=>b.pm||'Not set'), payPaid=cnt(done30.filter(b=>b.inv==='Paid'),b=>b.pm||'Not set');
+  const items=D.items||[], inStock=items.filter(i=>(i.q||0)>0), low=inStock.filter(i=>i.q<=5);
+  const sync=items.reduce((m,i)=>i.sync&&i.sync>m?i.sync:m,'');
+  $('xTiles').innerHTML=tile('Completed visits, 30 days',done30.length,'with an invoice status')+tile('Invoice paid',invC.Paid||0,money(invAmt.Paid||0))+tile('Invoice sent, not paid',invC.Sent||0,money(invAmt.Sent||0)+' at base price')+tile('Stock items in stock',inStock.length,items.length+' Xero items')+tile('Low stock',low.length,'1 to 5 left');
+  $('xInv').innerHTML='<tr><th>Invoice status</th><th class="num">Visits</th><th class="num">Base price</th></tr>'+Object.keys(invC).sort((a,b)=>invC[b]-invC[a]).map(k=>`<tr><td>${stPill(k==='Paid'?'Completed':k==='Sent'?'Waiting':k).replace(/>[^<]*<\/span>/,'>'+esc(k)+'</span>')}</td><td class="num">${invC[k]}</td><td class="num">${money(invAmt[k])}</td></tr>`).join('')+
+    `<tr><td colspan="3" class="muted" style="font-size:12.5px">"Sent" can also mean paid in Xero but not yet synced back to Zoho CRM. Check before chasing anyone.</td></tr>`;
+  $('xPay').innerHTML='<tr><th>Payment method</th><th class="num">Visits</th><th class="num">Marked paid</th></tr>'+Object.keys(payC).sort((a,b)=>payC[b]-payC[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${payC[k]}</td><td class="num">${payPaid[k]||0}</td></tr>`).join('');
+  $('xStockSub').textContent='Xero Items in Zoho CRM, last synced '+(sync?fmtDay(dayOf(sync))+' '+t12(timeOf(sync)):'(unknown)')+'. Items at zero include services that carry no stock.';
+  renderStock();
+  $('foot').textContent='Sources: Zoho CRM (Booking, Woztell logs, Complaints, Tasks, Order Processing, Xero Items) and the Pawkit CS Team Schedule Tracker. Times are Singapore time. Snapshot taken '+D.generated.replace('T',' ').slice(0,16)+' SGT.';
+}
+
+
+function renderStock(){
+  const items=D.items||[]; const q=($('xSearch').value||'').toLowerCase(), f=$('xFilter').value;
+  const keep=i=>{const n=i.q||0; if(f==='low'&&!(n>0&&n<=5))return false; if(f==='in'&&!(n>0))return false; if(f==='out'&&n>0)return false; return !q||(i.n||'').toLowerCase().includes(q)||(i.code||'').toLowerCase().includes(q);};
+  const rows=items.filter(keep).sort((a,b)=>(a.q||0)-(b.q||0)||(a.n||'').localeCompare(b.n||''));
+  $('xStock').innerHTML='<tr><th>Item</th><th>Code</th><th class="num">On hand</th><th class="num">Unit price</th></tr>'+(rows.length?rows.slice(0,400).map(i=>`<tr><td>${esc(i.n)}</td><td class="muted">${esc(i.code||'')}</td><td class="num">${(i.q||0)<=0?'<span class="pill bad">'+(i.q||0)+'</span>':i.q<=5?'<span class="pill warn">'+i.q+'</span>':i.q}</td><td class="num">${i.up!=null?'$'+i.up:''}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">No items match.</td></tr>');
+}
+
+function renderComplaints(){
+  const now=sgNow(), since=addDays(now.day,-30), q=($('cpSearch').value||'').toLowerCase(), f=$('cpFilter').value;
+  const SUM=CFG.complaint_summaries||{};
+  const cDay=c=>dayOf(c.cd||c.c)||'';
+  const short=t=>{t=(t||'').trim();return t.length>160?t.slice(0,157).replace(/\s+\S*$/,'')+'…':t;};
+  const rows=D.comp.filter(c=>{
+    if(f==='open'&&['Resolved','Closed'].includes(c.s))return false;
+    if(f==='30'&&cDay(c)<since)return false;
+    if(f==='late'&&c.cat!=='Late Arrival')return false;
+    if(f==='quality'&&!['Grooming Issue','Service Quality'].includes(c.cat))return false;
+    if(f==='noshow'&&c.cat!=='No Show')return false;
+    if(f==='refund'&&!c.rf)return false;
+    const sm=SUM[c.n]||{};
+    return !q||[c.n,c.p,c.cat,sm.issue,sm.outcome,c.desc,c.res].join(' ').toLowerCase().includes(q);
+  }).sort((a,b)=>cDay(b).localeCompare(cDay(a))||b.n.localeCompare(a.n));
+  const st=c=>['Resolved','Closed'].includes(c.s)?`<span class="pill">${esc(c.s)}</span>`:`<span class="pill bad">${esc(c.s||'No status')}</span>`;
+  $('comp').innerHTML='<tr><th>No.</th><th>Date</th><th>Provider</th><th>Category</th><th style="min-width:260px">Issue</th><th style="min-width:200px">Outcome</th><th>Status</th></tr>'+(rows.length?rows.map(c=>{
+    const sm=SUM[c.n]||{}; const issue=sm.issue||short(c.desc)||'No description in Zoho'; const out=sm.outcome||short(c.res)||'No outcome recorded';
+    return `<tr><td style="white-space:nowrap">${esc(c.n)}</td><td style="white-space:nowrap">${cDay(c)?esc(fmtDay(cDay(c))):''}</td><td>${esc(c.p||'')}</td><td class="muted">${esc(c.cat||'No category')}</td><td title="${esc(c.desc||'')}">${esc(issue)}${sm.issue?'':' <span class="pill">from Zoho text</span>'}</td><td class="muted" title="${esc(c.res||'')}">${esc(out)}${c.rf?' <span class="pill warn">refund $'+esc(c.ra||'')+'</span>':''}</td><td>${st(c)}</td></tr>`;}).join(''):'<tr><td colspan="7" class="muted">No complaints match.</td></tr>');
+}
+
+const ST_COL={'Not Started':'#c4c4c4','In Progress':'#fdab3d','Waiting for Provider':'#a25ddc','Waiting for Customer':'#579bfc','Waiting for input/approval':'#e2445c','Completed':'#00c875','Cancelled':'#797e93','Deferred':'#797e93'};
+const PR_COL={'Highest':'#333333','High':'#401694','Normal':'#5559df','Low':'#579bfc','Lowest':'#9aadbd'};
+const AV_COL=['#007f78','#e2445c','#fdab3d','#a25ddc','#579bfc','#00c875','#ff642e','#037f4c'];
+const avCol=n=>{let h=0;for(const c of n||'')h=(h*31+c.charCodeAt(0))>>>0;return AV_COL[h%AV_COL.length];};
+const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+const FOLD={}; 
+function renderBoard(){
+  const now=sgNow(), q=($('tkSearch').value||'').toLowerCase(), who=$('tkOwner').value;
+  const T=(D.tasks||[]).filter(t=>(!who||t.own===who)&&(!q||[t.sub,t.own,t.type,t.s,t.ho,t.prov,t.bid].join(' ').toLowerCase().includes(q)));
+  const since14=addDays(now.day,-14);
+  const groups=[
+    {k:'todo',name:'To do',col:'#579bfc',f:t=>t.s==='Not Started'||!t.s},
+    {k:'doing',name:'Working on it',col:'#fdab3d',f:t=>t.s==='In Progress'},
+    {k:'wait',name:'Waiting',col:'#a25ddc',f:t=>/Waiting/.test(t.s||'')},
+    {k:'done',name:'Done, last 14 days',col:'#00c875',f:t=>t.s==='Completed'&&(dayOf(t.cl)||'')>=since14},
+  ];
+  if(!('done' in FOLD)) FOLD.done=true;
+  const dueCell=t=>{ if(!t.due) return '<td class="due muted">–</td>'; const cls=t.s!=='Completed'&&t.due<now.day?'over':t.s!=='Completed'&&t.due===now.day?'today':''; const d=dparts(t.due); return `<td class="due ${cls}">${MON[d.getUTCMonth()]} ${d.getUTCDate()}${cls==='over'?' · overdue':cls==='today'?' · today':''}</td>`; };
+  let html='';
+  groups.forEach(g=>{
+    const rows=T.filter(g.f).sort((a,b)=>(a.due||'9').localeCompare(b.due||'9'));
+    const stc=cnt(rows,t=>t.s||'Not Started');
+    html+=`<div class="grp${FOLD[g.k]?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><span class="chev">▼</span>${esc(g.name)} <span class="n">${rows.length} task${rows.length===1?'':'s'}</span></button><div class="grp-b">`;
+    html+='<table class="btbl"><colgroup><col style="width:34%"><col style="width:13%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup><tr><th style="text-align:left;padding-left:12px">Task</th><th>Owner</th><th>Status</th><th>Due date</th><th>Priority</th><th>Type</th><th>Handover</th></tr>';
+    html+=rows.length?rows.map(t=>`<tr><td class="t">${esc(t.sub||'(no subject)')}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}${t.bid||t.prov||t.wait?`<span class="tsub">${esc([t.bid?'Booking '+t.bid:'',t.prov?'Provider '+t.prov:'',t.wait?'Waiting on '+t.wait:''].filter(Boolean).join(' · '))}</span>`:''}</td>
+      <td><div class="ownc">${t.own?`<span class="av" style="background:${avCol(t.own)}" title="${esc(t.own)}">${esc(initials(t.own))}</span><span>${esc(t.own.split(' ')[0])}</span>`:'<span class="muted">–</span>'}</div></td>
+      <td class="lab" style="background:${ST_COL[t.s]||'#c4c4c4'}" title="${esc(t.s||'Not Started')}">${esc(t.s==='In Progress'?'Working on it':t.s==='Waiting for input/approval'?'Needs approval':(t.s||'Not Started').replace('Waiting for ','Waiting: '))}</td>
+      ${dueCell(t)}
+      <td class="lab" style="background:${PR_COL[t.pr]||'#c4c4c4'}">${esc(t.pr||'')}</td>
+      <td class="muted" style="padding:0 8px">${esc(t.type||'')}</td>
+      <td class="muted" style="padding:0 8px;font-size:12.5px">${esc(t.ho?t.ho+(t.hos?' · '+t.hos:''):'')}</td></tr>`).join(''):'<tr><td class="t muted" colspan="7">Nothing here.</td></tr>';
+    if(rows.length) html+=`<tr class="sum"><td></td><td></td><td><div class="bar100">${Object.entries(stc).map(([k,v])=>`<i title="${esc(k)}: ${v}" style="width:${v/rows.length*100}%;background:${ST_COL[k]||'#c4c4c4'}"></i>`).join('')}</div></td><td></td><td></td><td></td><td></td></tr>`;
+    html+='</table></div></div>';
+  });
+  $('board').innerHTML=html;
+  $('board').querySelectorAll('.grp-h').forEach(h=>h.addEventListener('click',()=>{const g=h.parentElement;FOLD[g.dataset.g]=!g.classList.contains('fold');g.classList.toggle('fold');}));
+}
+
+let BK_RANGE='day'; try{BK_RANGE=localStorage.getItem('pawkit-cs360-bkrange')||'day'}catch(e){}
+let BK_DAY=null, BK_VIEW='visits';
+function bkAnchor(){ return BK_DAY||$('day').value; }
+function setRange(r){ BK_RANGE=r; try{localStorage.setItem('pawkit-cs360-bkrange',r)}catch(e){} renderBookings(bkAnchor()); }
+function bkStep(dir){ const a=bkAnchor(); let d;
+  if(BK_RANGE==='day') d=addDays(a,dir); else if(BK_RANGE==='week') d=addDays(a,7*dir);
+  else { const x=dparts(a); d=new Date(Date.UTC(x.getUTCFullYear(),x.getUTCMonth()+dir,1)).toISOString().slice(0,10); }
+  BK_DAY=d; renderBookings(d); }
+function rangeFor(day){
+  const d=dparts(day);
+  if(BK_RANGE==='week'){ const dow=(d.getUTCDay()+6)%7; const from=addDays(day,-dow); return {from,to:addDays(from,6),label:'Week of '+fmtDay(from)}; }
+  if(BK_RANGE==='month'){ const from=day.slice(0,8)+'01'; const nd=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return {from,to:nd.toISOString().slice(0,10),label:['January','February','March','April','May','June','July','August','September','October','November','December'][d.getUTCMonth()]+' '+d.getUTCFullYear()}; }
+  return {from:day,to:day,label:fmtDay(day)};
+}
+function renderBookings(day){
+  const now=sgNow(), R=rangeFor(day), isDay=BK_RANGE==='day';
+  const dmin=[...D.created.map(r=>dayOf(r.c)),...D.visits.map(r=>dayOf(r.d))].filter(Boolean).sort();
+  const di=$('bkDate'); di.min=dmin[0]||''; di.max=dmin[dmin.length-1]||''; di.value=day;
+  $('bkPrev').disabled=!!di.min&&rangeFor(day).from<=di.min; $('bkNext').disabled=!!di.max&&rangeFor(day).to>=di.max;
+  document.querySelectorAll('#bkRange button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===BK_RANGE)));
+  const inR=x=>x&&x>=R.from&&x<=R.to;
+  const made=D.created.filter(r=>inR(dayOf(r.c))), vis=D.visits.filter(r=>inR(dayOf(r.d)));
+  const vs=cnt(vis,r=>r.s||'No status');
+  const dataFrom=D.created.map(r=>dayOf(r.c)).sort()[0]||R.from;
+  const visUntil=D.visits_until||dmin[dmin.length-1]||R.to;
+  const partial=R.from<dataFrom, partialEnd=R.to>visUntil;
+  $('bkRangeLabel').textContent=R.label+(partial?' (data from '+fmtDay(dataFrom)+')':'')+(partialEnd?' (visits loaded up to '+fmtDay(visUntil)+')':'');
+  // chart days
+  let cdays=[]; if(isDay){ for(let i=13;i>=0;i--){ const d=addDays(day,-i); if(d>=dataFrom) cdays.push(d);} }
+  else { for(let d=R.from; d<=R.to && d<=now.day; d=addDays(d,1)) if(d>=dataFrom) cdays.push(d); }
+  const nDays=Math.max(1,(isDay?1:cdays.length));
+  const upcoming=D.visits.filter(r=>dayOf(r.d)>now.day && r.s!=='Cancelled');
+  const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  const NOT_REAL=['New enquiry','Not fulfilled','Archive'], HIDE_BY=['Kent William'];
+  const real=r=>!NOT_REAL.includes(r.s)&&!HIDE_BY.includes(r.by);
+  const madeR=made.filter(real);
+  $('bkTiles').innerHTML=tile('made','Bookings made',made.length,isDay?R.label:'avg '+(made.length/nDays).toFixed(1)+' a day')+
+    tile('real','Real bookings',madeR.length,'excl. enquiries and not fulfilled')+
+    tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',vs.Completed||0,'visits')+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
+    tile('upcoming','Upcoming visits',upcoming.length,'from tomorrow, not cancelled');
+  $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
+  // month calendar
+  const calCard=$('bkCalCard');
+  if(BK_RANGE==='month'){
+    calCard.style.display='';
+    const mc=cnt(D.created,r=>dayOf(r.c)), vc=cnt(D.visits,r=>dayOf(r.d));
+    const first=dparts(R.from), lead=(first.getUTCDay()+6)%7;
+    let g=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<div class="h">${x}</div>`).join('')+'<div class="blank"></div>'.repeat(lead);
+    for(let d=R.from; d<=R.to; d=addDays(d,1)){
+      const has=d>=(dmin[0]||'')&&d<=(dmin[dmin.length-1]||'');
+      g+=`<button type="button" data-d="${d}" class="${d===now.day?'today':''}${d===day&&BK_DAY?' sel':''}" ${has?'':'disabled'} title="${esc(fmtDay(d))}"><span class="dn">${+d.slice(8)}</span>${has?`<span>${mc[d]||0} made</span><span class="vi">${vc[d]||0} visits</span>`:''}</button>`;
+    }
+    $('bkCal').innerHTML='<div class="cal">'+g+'</div>';
+    $('bkCalTitle').textContent='Pick a day in '+R.label;
+    $('bkCal').querySelectorAll('button[data-d]').forEach(b=>b.addEventListener('click',()=>{BK_DAY=b.dataset.d; setRange('day');}));
+  } else calCard.style.display='none';
+  // chart by service
+  const SVC_COL=['var(--c1)','var(--c2)','var(--c3)','var(--c4)'];
+  const pool=D.created.filter(r=>cdays.includes(dayOf(r.c)));
+  const sv=cnt(pool,r=>r.cat||'Not set');
+  const top=Object.keys(sv).filter(k=>k!=='Not set').sort((a,b)=>sv[b]-sv[a]).slice(0,4);
+  const ser=top.map((k,i)=>({key:k,label:k,color:SVC_COL[i]})).concat([{key:'__other',label:'Other services',color:'var(--c5)'},{key:'__none',label:'Enquiry, no service set',color:'var(--c-other)'}]);
+  const byDay={}; pool.forEach(r=>{const d=dayOf(r.c); const k=!r.cat?'__none':top.includes(r.cat)?r.cat:'__other'; (byDay[d]=byDay[d]||{})[k]=((byDay[d]||{})[k]||0)+1;});
+  $('bkLegend').innerHTML=ser.map(se=>`<span><i style="background:${se.color}"></i>${esc(se.label)}</span>`).join('');
+  $('bkChartTitle').textContent=isDay?'Bookings made per day, last 14 days':'Bookings made per day, '+R.label;
+  barChart($('bkChart'),cdays,ser,d=>byDay[d]||{},day,true,d=>{BK_DAY=d; setRange('day');});
+  // by person
+  const by=cnt(madeR,r=>r.by||'Unknown');
+  const names=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+  $('byPerson').innerHTML='<tr><th>Created by</th><th class="num">'+esc(R.label)+'</th><th class="num">Share</th></tr>'+
+    (names.length?names.map(n=>`<tr><td>${esc(n)}</td><td class="num">${by[n]}</td><td class="num">${Math.round(by[n]/madeR.length*100)}%</td></tr>`).join(''):'<tr><td colspan="3" class="muted">No real bookings in this range.</td></tr>')+
+    `<tr><th>Total</th><th class="num">${madeR.length}</th><th></th></tr>`;
+  // detail list (driven by the clicked tile)
+  const pillFor=s=>s==='Completed'?'on':s==='Cancelled'||s==='No show'||s==='Not fulfilled'?'bad':s==='Scheduled'?'brand':'warn';
+  const when=(iso,withDay)=>iso?(withDay?esc(fmtDay(dayOf(iso)))+', ':'')+esc(t12(timeOf(iso))):'';
+  const VIEWS={
+    made:{t:'Bookings made',rows:made,kind:'made'}, real:{t:'Real bookings',rows:madeR,kind:'made'},
+    visits:{t:'Visits',rows:vis,kind:'visit'}, completed:{t:'Completed visits',rows:vis.filter(r=>r.s==='Completed'),kind:'visit'},
+    cancelled:{t:'Cancelled visits and no-shows',rows:vis.filter(r=>r.s==='Cancelled'||r.s==='No show'),kind:'visit'},
+    upcoming:{t:'Upcoming visits',rows:upcoming,kind:'visit',all:true}};
+  const V=VIEWS[BK_VIEW]||VIEWS.visits;
+  $('visitsTitle').textContent=V.t+', '+(V.all?'from tomorrow':R.label)+' ('+V.rows.length+')';
+  $('visitsSub').textContent=(V.kind==='made'?'Bookings by the time they were created in Zoho CRM.':'Bookings by visit date and time in Zoho CRM.')+' Click a tile above to change this list. No customer details are shown.';
+  const multi=!isDay||V.all;
+  if(V.kind==='made'){
+    $('visits').innerHTML=V.rows.length?'<tr><th>Created</th><th>Service</th><th>Status</th><th>Created by</th><th>Visit</th><th>Provider</th></tr>'+
+      V.rows.slice().sort((a,b)=>(a.c||'').localeCompare(b.c||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.c,multi)}</td><td>${esc(r.cat||'No service set')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${esc(r.by||'')}</td><td style="white-space:nowrap" class="muted">${r.d?when(r.d,true):'Not set'}</td><td>${esc(r.p||'')}</td></tr>`).join('')
+      :'<tr><td class="muted">Nothing in this range.</td></tr>';
+  } else {
+    $('visits').innerHTML=V.rows.length?'<tr><th>'+(multi?'Date and time':'Time')+'</th><th>Service</th><th>Area</th><th>Provider</th><th>Status</th><th>Invoice</th></tr>'+
+      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td class="muted">${esc(r.inv||'')}</td></tr>`).join('')
+      :'<tr><td class="muted">Nothing in this range.</td></tr>';
+  }
+  // by service
+  const sd=cnt(vis,r=>r.cat||'No service'), cs=cnt(vis.filter(r=>r.s==='Completed'),r=>r.cat||'No service');
+  $('bySvcSub').textContent='Visits in '+R.label+', and how many were completed.';
+  $('bySvc').innerHTML='<tr><th>Service</th><th class="num">Visits</th><th class="num">Completed</th></tr>'+(Object.keys(sd).length?Object.keys(sd).sort((a,b)=>sd[b]-sd[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${sd[k]}</td><td class="num">${cs[k]||0}</td></tr>`).join(''):'<tr><td colspan="3" class="muted">None.</td></tr>');
+}
+// grouped bar chart, one y axis, hover tooltip
+function barChart(el,days,series,get,sel,stack,onPick){
+  const W=520,H=210,L=34,R=6,T=10,B=26;
+  const vals=days.map(d=>series.map(s=>(get(d)||{})[s.key]||0));
+  const max=Math.max(1,...(stack?vals.map(r=>r.reduce((a,b)=>a+b,0)):vals.flat()));
+  const step=Math.pow(10,Math.floor(Math.log10(max))); const nice=[1,2,2.5,5,10].map(m=>m*step).find(v=>v*4>=max)||step*10;
+  const top=Math.ceil(max/nice)*nice;
+  const cw=(W-L-R)/days.length, gap=2, bw=stack?Math.max(4,cw*0.62):Math.max(3,(cw*0.72-gap*(series.length-1))/series.length);
+  const y=v=>T+(H-T-B)*(1-v/top);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(x=>x.label).join(' and '))} per day"><g class="grid">`;
+  for(let v=0;v<=top;v+=nice) s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/>`;
+  s+='</g><g class="axis">';
+  for(let v=0;v<=top;v+=nice) s+=`<text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
+  days.forEach((d,i)=>{ s+=`<text x="${L+cw*i+cw/2}" y="${H-8}" text-anchor="middle" style="${d===sel?'font-weight:700;fill:var(--ink)':''}">${shortDay(d)}</text>`; });
+  s+='</g>';
+  days.forEach((d,i)=>{
+    const x0=stack?L+cw*i+(cw-bw)/2:L+cw*i+(cw-(bw*series.length+gap*(series.length-1)))/2;
+    if(d===sel) s+=`<rect x="${L+cw*i}" y="${T}" width="${cw}" height="${H-T-B}" fill="var(--brand-soft)"/>`;
+    if(stack){ let acc=0; const lastJ=vals[i].map((v,j)=>v>0?j:-1).reduce((a,b)=>Math.max(a,b),-1);
+      series.forEach((se,j)=>{const v=vals[i][j]; if(!v) return; const yb=y(acc), yt=y(acc+v)+(j===lastJ?0:gap); acc+=v; const h=yb-yt; if(h<=0) return;
+        const r=j===lastJ?Math.min(4,bw/2,h):0, x=x0;
+        s+=`<path d="M${x},${yb} V${yt+r} Q${x},${yt} ${x+r},${yt} H${x+bw-r} Q${x+bw},${yt} ${x+bw},${yt+r} V${yb} Z" fill="${se.color}"/>`;});
+    } else
+    series.forEach((se,j)=>{const v=vals[i][j],h=(H-T-B)*v/top,x=x0+j*(bw+gap),yy=y(v),r=Math.min(4,bw/2,h);
+      s+=h>0?`<path d="M${x},${y(0)} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+bw-r} Q${x+bw},${yy} ${x+bw},${yy+r} V${y(0)} Z" fill="${se.color}"/>`:'';});
+    s+=`<rect class="hit" data-i="${i}" x="${L+cw*i}" y="${T}" width="${cw}" height="${H-T-B}" fill="transparent"/>`;
+  });
+  s+=`<line x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ink3)"/></svg>`;
+  el.innerHTML=s;
+  const tip=$('tip');
+  el.querySelectorAll('.hit').forEach(h=>{
+    h.addEventListener('mousemove',e=>{const i=+h.dataset.i;tip.innerHTML='<b>'+esc(fmtDay(days[i]))+(stack?' · '+vals[i].reduce((a,b)=>a+b,0)+' total':'')+'</b><br>'+series.map((se,j)=>stack&&!vals[i][j]?'':'<i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:'+se.color+'"></i>'+esc(se.label)+': '+vals[i][j].toLocaleString()).filter(Boolean).join('<br>');tip.style.display='block';tip.style.left=e.pageX+'px';tip.style.top=e.pageY+'px';});
+    h.addEventListener('mouseleave',()=>tip.style.display='none');
+    h.addEventListener('click',()=>{const d=days[+h.dataset.i]; if(onPick) return onPick(d); $('day').value=d; USER_PICKED=d!==sgNow().day; BK_DAY=null; render(d);});
+  });
+}
+})();
+</script>
+</body>
+</html>
