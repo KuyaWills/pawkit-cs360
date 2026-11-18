@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = os.path.expanduser("~/.config/pawkit-cs360/zoho.json")
+TOKEN_CACHE = os.path.expanduser("~/.config/pawkit-cs360/zoho_token.json")   # private, never in the repo
 SGT = timezone(timedelta(hours=8))
 W = "woztellplatformintegration__"
 
@@ -29,14 +30,38 @@ class Zoho:
         self.tok, self.exp = None, 0
 
     def token(self):
-        if not self.tok or time.time() > self.exp - 60:
-            j = post(self.c.get("accounts", "https://accounts.zoho.com") + "/oauth/v2/token", {
-                "grant_type": "refresh_token", "refresh_token": self.c["refresh_token"],
-                "client_id": self.c["client_id"], "client_secret": self.c["client_secret"]})
+        # Zoho allows only about 10 new access tokens per 10 minutes, and a token lasts an hour: keep it in a
+        # private file and reuse it across runs instead of asking for a new one every minute.
+        if not self.tok:
+            try:
+                with open(TOKEN_CACHE) as f:
+                    c = json.load(f)
+                if c.get("blocked", 0) > time.time():   # Zoho refused a refresh recently: leave it alone until then
+                    raise SystemExit("waiting for Zoho: too many sign-in refreshes, trying again at %s" %
+                                     datetime.fromtimestamp(c["blocked"], SGT).strftime("%H:%M"))
+                self.tok, self.exp = c["t"], c["exp"]
+            except (OSError, ValueError, KeyError):
+                pass
+        if not self.tok or time.time() > self.exp - 120:
+            try:
+                j = self._new_token()
+            except urllib.error.HTTPError as e:
+                fd = os.open(TOKEN_CACHE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w") as f:      # back off for 11 minutes so the limit can clear
+                    json.dump({"blocked": time.time() + 660}, f)
+                raise SystemExit("Zoho token refresh failed: HTTP %s (too many refreshes in a short time, or access revoked)" % e.code)
             if "access_token" not in j:
                 raise SystemExit("Zoho token refresh failed: %s" % j.get("error", j))
             self.tok, self.exp = j["access_token"], time.time() + int(j.get("expires_in", 3600))
+            fd = os.open(TOKEN_CACHE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
+                json.dump({"t": self.tok, "exp": self.exp}, f)
         return self.tok
+
+    def _new_token(self):
+        return post(self.c.get("accounts", "https://accounts.zoho.com") + "/oauth/v2/token", {
+            "grant_type": "refresh_token", "refresh_token": self.c["refresh_token"],
+            "client_id": self.c["client_id"], "client_secret": self.c["client_secret"]})
 
     def req(self, path, body=None):
         h = {"Authorization": "Zoho-oauthtoken " + self.token()}
