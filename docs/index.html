@@ -227,16 +227,6 @@ details.fold[open]>summary{margin-bottom:10px}
 td a[title="Open in Zoho"]{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--brand)}
 
-.uptable td,.uptable th{padding:9px 10px}
-.uptable tr.dayrow td{background:var(--brand-soft);color:var(--head);font-weight:800;border-bottom:0;padding:7px 12px}
-.uptable tr.dayrow td:first-child{border-radius:10px 0 0 10px}
-.uptable tr.dayrow td:last-child{border-radius:0 10px 10px 0;text-align:right;font-weight:700;color:var(--ink2)}
-.uptable tr.dayrow.today td{background:var(--brand);color:#fff}
-.uptable tr.dayrow.today td:last-child{color:#fff}
-.uptable tr.gap td{border:0;padding:5px 0}
-.uptable td.time{white-space:nowrap;font-weight:700;color:var(--head);font-variant-numeric:tabular-nums}
-.uptable td.svc{font-weight:700}
-.uptable tbody tr:not(.dayrow):not(.gap):hover td{background:var(--mint)}
 </style>
 </head>
 <body>
@@ -331,10 +321,6 @@ td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--
       <div id="bkCal"></div>
     </div>
     <div class="tiles" id="bkTiles"></div>
-    <div class="card">
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h2 id="upTitle" style="margin:0">Upcoming bookings</h2><span class="sub" id="upSub" style="margin:0"></span></div>
-      <div class="tablewrap" style="margin-top:10px"><table id="upTable" class="uptable"></table></div>
-    </div>
     <div class="two">
       <div class="card">
         <h2 id="bkChartTitle">Bookings made per day</h2>
@@ -1162,19 +1148,6 @@ function renderBookings(day){
   // detail list (driven by the clicked tile)
   const pillFor=s=>s==='Completed'?'on':s==='Cancelled'||s==='No show'||s==='Not fulfilled'?'bad':s==='Scheduled'?'brand':'warn';
   const when=(iso,withDay)=>iso?(withDay?esc(fmtDay(dayOf(iso)))+', ':'')+esc(t12(timeOf(iso))):'';
-  // ---- upcoming bookings, following the date picked above ----
-  { const uFrom=isDay?day:R.from, uTo=isDay?addDays(day,6):R.to;
-    const U=D.visits.filter(r=>{const d=dayOf(r.d); return d&&d>=uFrom&&d<=uTo&&!['Cancelled','No show','Completed','Not fulfilled','Archive'].includes(r.s)&&!isDone(r);}).sort((a,b)=>(a.d||'').localeCompare(b.d||''));
-    $('upTitle').textContent='Upcoming bookings ('+U.length+')';
-    $('upSub').textContent=(isDay?fmtDay(uFrom)+' to '+fmtDay(uTo)+' (7 days from the date picked)':R.label)+' · still to happen, not cancelled'+(U.length?' · '+money0(U.reduce((a,r)=>a+(r.amt||0),0))+' expected':'');
-    const byDay={}; U.forEach(r=>{(byDay[dayOf(r.d)]=byDay[dayOf(r.d)]||[]).push(r);});
-    const stP=s=>s==='Scheduled'?'<span class="pill brand">Scheduled</span>':'<span class="pill warn">'+esc(s||'No status')+'</span>';
-    $('upTable').innerHTML=U.length?'<tr><th>Time</th><th>Service</th><th>Area</th><th>Provider</th><th>Customer</th><th>Status</th><th>Booked by</th><th>Invoice</th><th class="num">Amount</th></tr>'+
-      Object.keys(byDay).sort().map((d,i)=>{ const rows=byDay[d];
-        return (i?'<tr class="gap"><td colspan="9"></td></tr>':'')+`<tr class="dayrow${d===now.day?' today':''}"><td colspan="6">${esc(fmtDay(d))}${d===now.day?' · today':d===addDays(now.day,1)?' · tomorrow':''}</td><td colspan="3">${rows.length} booking${rows.length===1?'':'s'} · ${money0(rows.reduce((a,r)=>a+(r.amt||0),0))}</td></tr>`+
-          rows.map(r=>`<tr><td class="time">${recLink('booking',r.id,t12(timeOf(r.d))+(r.e?'–'+t12(timeOf(r.e)):''))}</td><td class="svc">${esc(r.cat||'No service')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${r.p?esc(r.p):'<span class="pill warn">Not assigned</span>'}</td><td>${r.rep?'<span class="pill brand">repeat</span>':r.o?'<span class="pill">new</span>':''}</td><td>${stP(r.s)}</td><td class="muted">${esc(r.by||'')}</td><td class="muted">${esc(r.inv||'')}</td><td class="num">${r.amt!=null?'$'+esc(r.amt):''}</td></tr>`).join(''); }).join('')
-      :'<tr><td class="muted">No upcoming bookings in this period.</td></tr>';
-  }
   const VIEWS={
     made:{t:'Bookings made',rows:made,kind:'made'}, real:{t:'Real bookings',rows:madeR,kind:'made'},
     visits:{t:'Visits',rows:vis,kind:'visit'}, completed:{t:'Completed visits',rows:doneV,kind:'visit'},
