@@ -53,6 +53,7 @@ def main():
         "visits_until": raw.get("visits_until"),
         "refresh_seconds": REFRESH_SECONDS,
         "wa": raw["wa"],
+        "wa_now": raw.get("wa_now"),
         "created": raw["created"],
         "visits": raw["visits"],
         "comp": raw["comp"],

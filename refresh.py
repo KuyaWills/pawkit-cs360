@@ -66,6 +66,81 @@ class Zoho:
             off += 2000
 
 
+# ---- WhatsApp reply status: which conversations are answered, waiting, or need urgent care ----
+URGENT_AFTER_MIN = 30
+URGENT_WORDS = ("urgent", "emergency", "asap", "immediately", "bleeding", "blood", "vomit", "seizure", "collapse", "not breathing",
+                "can't breathe", "cant breathe", "dying", "injur", "poison", "swallow", "complain", "refund", "unacceptable",
+                "disappointed", "angry", "no show", "didn't come", "didnt come", "never came", "still waiting", "no reply", "no response")
+CLOSERS = {"ok", "okay", "okie", "k", "kk", "thanks", "thank", "you", "u", "so", "much", "very", "ty", "tq", "thx", "noted", "great", "sure",
+           "alright", "got", "it", "will", "do", "no", "problem", "np", "yes", "yup", "yep", "ya", "yeah", "see", "bye", "welcome", "nice",
+           "good", "perfect", "cool", "and", "for", "the", "your", "help", "lah", "la", "have", "a", "day", "night", "appreciate", "appreciated"}
+
+
+def whatsapp_status(z, now):
+    """Looks at the last 48 hours of one-to-one WhatsApp messages and groups them by customer. A conversation is
+    'waiting' when the customer's latest message has no Pawkit message after it (a bare thanks/ok/emoji does not count
+    as needing a reply). It is 'urgent' when it has waited URGENT_AFTER_MIN minutes or contains an urgent word.
+    No message text is published: only the customer's CRM name, the last 4 digits of the number and the times."""
+    start = (now - timedelta(hours=48)).isoformat(timespec="seconds")
+    q = ("select %sFrom, %sTo, %sDirection, %sMessage_Type, %sMessage_Date_time, %sMember_Id, %sMessage_Data, %sLead.Full_Name from %sWoztell_logs "
+         "where %sMessage_Date_time between '%s' and '%s'" % (W, W, W, W, W, W, W, W, W, W, start, now.isoformat(timespec="seconds")))
+    rows = z.all(q)
+    conv = {}
+    for r in sorted(rows, key=lambda r: r.get(W + "Message_Date_time") or ""):
+        t, typ, d = r.get(W + "Message_Date_time"), r.get(W + "Message_Type"), r.get(W + "Direction")
+        if not t or not typ or typ in ("REACT", "SMB_CONTACTS", "READ", "SENT", "DELIVERY") or d not in ("In", "Out"):
+            continue
+        key = r.get(W + "Member_Id") or (r.get(W + "From") if d == "In" else r.get(W + "To"))
+        c = conv.setdefault(key, {"pend": [], "name": None, "tel": None, "ins": 0, "waits": [], "last_in": None})
+        if d == "In":
+            text = ""
+            if typ == "TEXT":
+                try:
+                    text = str(json.loads(r.get(W + "Message_Data") or "{}").get("text") or "")
+                except (ValueError, AttributeError):
+                    text = str(r.get(W + "Message_Data") or "")
+            c["pend"].append((t, typ, text))
+            c["ins"] += 1; c["last_in"] = t
+            c["tel"] = (r.get(W + "From") or "")[-4:]
+            c["name"] = r.get(W + "Lead.Full_Name") or c["name"]
+        elif typ != "TEMPLATE":            # templates are reminders and broadcasts, not replies
+            if c["pend"]:
+                c["waits"].append((datetime.fromisoformat(t) - datetime.fromisoformat(c["pend"][0][0])).total_seconds() / 60)
+            c["pend"] = []
+    today = now.date().isoformat()
+    out = {"answered": 0, "convs": 0, "waiting": [], "urgent_after": URGENT_AFTER_MIN, "window_h": 48}
+    waits_today = []
+    for c in conv.values():
+        if not c["ins"]:
+            continue
+        out["convs"] += 1
+        pend = c["pend"]
+        # a closing "thanks / ok / emoji" needs no reply
+        def closer(p):
+            words = [w for w in "".join(ch.lower() if ch.isalnum() or ch == "'" else " " for ch in p[2]).split()]
+            return p[1] in ("TEXT", "STICKER") and len(words) <= 6 and all(w in CLOSERS for w in words)
+        while pend and closer(pend[-1]) and all(closer(p) for p in pend):
+            pend = []
+        if not pend:
+            out["answered"] += 1
+        else:
+            mins = int((now - datetime.fromisoformat(pend[0][0])).total_seconds() // 60)
+            txt = " ".join(p[2] for p in pend).lower()
+            word = next((w for w in URGENT_WORDS if w in txt), None)
+            name = (c["name"] or "").strip()
+            if not name or name.lower().startswith("unknown") or name.replace(" ", "").replace("+", "").isdigit():
+                name = None
+            out["waiting"].append({"name": name, "tel": c["tel"], "since": pend[0][0], "mins": mins, "n": len(pend),
+                                   "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word)})
+        if c["last_in"] and c["last_in"][:10] == today:
+            waits_today += c["waits"][-3:]
+    out["waiting"].sort(key=lambda w: -w["mins"])
+    waits_today.sort()
+    out["median_reply_min"] = round(waits_today[len(waits_today) // 2], 1) if waits_today else None
+    return out
+
+
+
 def customer_history(z, today):
     """Per-customer history from every booking: first completed visit (for 'repeat'), and who is due
     for grooming or a vaccination. Heavy (all bookings), so it is cached and rebuilt once an hour."""
@@ -168,6 +243,12 @@ def main():
     with open(ctmp, "w") as f:
         json.dump(cache, f)
     os.replace(ctmp, cpath)
+
+    try:
+        wa_now = whatsapp_status(z, now)
+    except SystemExit as e:
+        print("WARNING WhatsApp reply status could not be read:", str(e)[:120])
+        wa_now = None
 
     hist = customer_history(z, today)
     first = hist["first"]
@@ -273,7 +354,7 @@ def main():
             "pm": b.get("Payment_Method"), "amt": b.get("Base_Price"), "cat": b.get("Service_Category")}
            for b in z.all("select Date_Time, Booking_Status, Invoice_Status, Paid_On, Payment_Method, Base_Price, Service_Category from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (s30, end14))]
 
-    out = {"generated": now.isoformat(timespec="minutes"), "visits_until": end_vis, "wa": wa, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"], "leave": leave,
+    out = {"generated": now.isoformat(timespec="minutes"), "visits_until": end_vis, "wa": wa, "wa_now": wa_now, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"], "leave": leave,
            "tasks": tasks, "orders": orders, "items": items, "inv": inv}
     tmp = os.path.join(HERE, "raw", "crm.json.tmp")
     with open(tmp, "w") as f:

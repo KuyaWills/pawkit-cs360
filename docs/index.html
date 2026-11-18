@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="color-scheme" content="light only">
-<title>Pawkit CS360</title>
+<title>Pawkit Ops360</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
@@ -191,7 +191,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 <div id="gate">
   <form id="gateForm" autocomplete="off">
     <img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit">
-    <div class="eyebrow" style="margin-top:16px">Internal · CS360</div>
+    <div class="eyebrow" style="margin-top:16px">Internal · Pawkit Ops360</div>
     <h1 style="margin:4px 0 6px">Customer service, at a glance</h1>
     <p>Internal page for the Pawkit team. Enter the team passcode.</p>
     <input id="pw" type="password" placeholder="Team passcode" aria-label="Team passcode" autofocus>
@@ -217,7 +217,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 
 <div id="app">
  <div class="brandbar"><div class="wrap" style="padding-top:12px;padding-bottom:12px"><header style="margin:0">
-    <h1><img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit"><span>CS360</span></h1>
+    <h1><img class="logo" src="https://static.wixstatic.com/media/4312ba_47911852e8bb418e9cae1e70fc1dc0f2~mv2.png/v1/fill/w_272,h_86,al_c,q_85/logo.png" alt="Pawkit"><span>Ops360</span></h1>
     <span class="spacer"></span>
     <label class="updated" for="day">Day</label>
     <select id="day" aria-label="Pick a day"></select>
@@ -325,6 +325,16 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
   <!-- WHATSAPP -->
   <section data-panel="whatsapp">
     <div class="tiles" id="waTiles"></div>
+    <div id="waNowWrap">
+      <h2 style="margin:18px 4px 2px">Reply status right now</h2>
+      <p class="sub" id="waNowNote" style="margin:0 4px 10px"></p>
+      <div class="tiles" id="waNowTiles"></div>
+      <div class="card">
+        <h2 id="waNowTitle">Waiting for a reply</h2>
+        <p class="sub">Longest wait first. Message text is not shown here: find the chat in WOZTELL by the name or the last 4 digits of the number.</p>
+        <div class="tablewrap"><table id="waNow"></table></div>
+      </div>
+    </div>
     <div class="card">
       <h2>WhatsApp messages per day</h2>
       <p class="sub">All one-to-one WhatsApp messages logged in Zoho CRM (WOZTELL). Group chats are not counted. WOZTELL logs every Pawkit message as "LiveChat / API", so there is no split by human agent. Click a bar to pick that day.</p>
@@ -568,6 +578,25 @@ let DECIDE=null;
     decideDetails(); };
   window.decideDraw=draw; draw();
 })();
+// WhatsApp reply status: answered, waiting, needs urgent care (worked out by refresh.py from the last 48 hours)
+let WN_F='waiting';
+function renderWaNow(){
+  const W=D.wa_now, wrap=$('waNowWrap'); if(!W){ wrap.style.display='none'; return; } wrap.style.display='';
+  const gen=new Date(D.generated), age=m=>{ m=Math.max(0,Math.round(m)); return m<60?m+' min':m<1440?Math.floor(m/60)+' h '+(m%60)+' min':Math.floor(m/1440)+' d '+Math.floor(m%1440/60)+' h'; };
+  const drift=Math.max(0,Math.round((Date.now()-gen.getTime())/60000));
+  const wt=W.waiting.map(w=>({...w,mins:w.mins+drift})).map(w=>({...w,urgent:w.urgent||w.mins>=W.urgent_after}));
+  const urg=wt.filter(w=>w.urgent), pct=W.convs?Math.round(W.answered/W.convs*100):0;
+  $('waNowNote').textContent='Customers who messaged in the last '+W.window_h+' hours. Waiting = their latest message has no Pawkit reply after it (a plain thanks, ok or emoji does not count). Urgent = waiting '+W.urgent_after+' minutes or more, or the message has an urgent word.';
+  const t=(f,k,v,d,cls)=>`<div class="tile click${WN_F===f?' on':''}" role="button" tabindex="0" data-wn="${f}" title="Show the list"><div class="k">${esc(k)}</div><div class="v"${cls?' style="color:var(--'+cls+')"':''}>${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  $('waNowTiles').innerHTML=t('all','Conversations',W.convs,'customers, last '+W.window_h+' hours')+t('all','Answered',W.answered,pct+'% of conversations',pct>=90?'good':'')+
+    t('waiting','Waiting for a reply',wt.length,wt.length?'longest '+age(wt[0].mins):'none right now',wt.length?'warn':'good')+
+    t('urgent','Needs urgent care',urg.length,urg.length?'waiting '+W.urgent_after+' min or more, or urgent word':'none right now',urg.length?'bad':'good')+
+    t('all','Typical reply time',W.median_reply_min==null?'–':age(W.median_reply_min),'median today, customer message to reply');
+  const V=WN_F==='urgent'?urg:wt;
+  $('waNowTitle').textContent=(WN_F==='urgent'?'Needs urgent care':'Waiting for a reply')+' ('+V.length+')';
+  $('waNow').innerHTML=V.length?'<tr><th>Customer</th><th>Number ends</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map(w=>`<tr><td>${esc(w.name||'Not in CRM by name')}</td><td>${esc(w.tel||'')}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
+}
+document.addEventListener('click',e=>{ const t=e.target.closest('[data-wn]'); if(!t) return; WN_F=t.dataset.wn==='all'?'waiting':t.dataset.wn; renderWaNow(); $('waNow').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); });
 // sick leave needs a medical document: say whether one is attached to the request in Zoho
 const docPill=l=>l.type!=='Sick leave'||l.doc==null?'':l.doc?' <span class="pill on">document attached</span>':' <span class="pill bad">no document</span>';
 // once the dashboard data is open on this device, show whose request it is
@@ -822,6 +851,7 @@ function render(day){
   $('waTiles').innerHTML=tile('From customers',wa.in.toLocaleString(),fmtDay(day),'wa:in')+tile('From Pawkit',wa.out.toLocaleString(),fmtDay(day),'wa:out')+
     tile('Customers who messaged',wa.chats,fmtDay(day),'wa:chats')+tile('Daily average',Math.round(tin/days.length).toLocaleString(),'from customers, 14 days','wa:in')+
     tile('Pawkit messages per customer message',(wa.in?(wa.out/wa.in).toFixed(2):'–'),fmtDay(day),'wa:ratio');
+  renderWaNow();
   const waKey=(ACT_ON.wa||'').split(':')[1], waVal=d=>{const w=D.wa[d];return waKey==='ratio'?(w.in?w.out/w.in:0):(w[waKey]||0);};
   const waDays=waKey?days.slice().sort((a,b)=>waVal(b)-waVal(a)):days.slice().reverse();
   const hl=k=>waKey===k?' style="background:var(--brand-soft)"':'';
@@ -1005,7 +1035,7 @@ function renderBookings(day){
   $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   // month calendar
   const calCard=$('bkCalCard');
-  if(BK_RANGE==='month'){
+  if(false){   // month view no longer shows the pick-a-day calendar: the tiles and tables cover the whole month
     calCard.style.display='';
     const mc=cnt(D.created,r=>dayOf(r.c)), vc=cnt(D.visits,r=>dayOf(r.d));
     const first=dparts(R.from), lead=(first.getUTCDay()+6)%7;
