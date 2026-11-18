@@ -213,12 +213,23 @@ def main():
               "up": i.get("Unit_Price"), "cp": i.get("Cost_Price"), "sync": i.get("Last_Synced")}
              for i in z.all("select Name, Item_Code, Qty_On_Hand, Reserved_Qty, Unit_Price, Cost_Price, Last_Synced from Xero_Items where id is not null")]
 
+    # leave requests (custom module Leave_Requests; the reason stays in Zoho, it is not published)
+    try:
+        lv = z.all("select Team_Member, Leave_Type, From_Date, To_Date, Cover_Arranged, Leave_Status, Decision_Note, Created_Time, Modified_By, Modified_Time from Leave_Requests where id is not null")
+    except SystemExit as e:
+        print("WARNING leave requests could not be read:", str(e)[:120])
+        lv = None
+    leave = None if lv is None else [{"id": r.get("id"), "name": r.get("Team_Member"), "type": r.get("Leave_Type"), "from": r.get("From_Date"), "to": r.get("To_Date") or r.get("From_Date"),
+              "cover": r.get("Cover_Arranged"), "status": r.get("Leave_Status") or "Pending", "note": r.get("Decision_Note"),
+              "asked": r.get("Created_Time"), "by": nm(r.get("Modified_By")) if (r.get("Leave_Status") in ("Approved", "Rejected")) else None,
+              "when": r.get("Modified_Time")} for r in lv]
+
     s30 = (today - timedelta(days=30)).isoformat()
     inv = [{"d": b.get("Date_Time"), "s": b.get("Booking_Status"), "inv": b.get("Invoice_Status"), "po": b.get("Paid_On"),
             "pm": b.get("Payment_Method"), "amt": b.get("Base_Price"), "cat": b.get("Service_Category")}
            for b in z.all("select Date_Time, Booking_Status, Invoice_Status, Paid_On, Payment_Method, Base_Price, Service_Category from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (s30, end14))]
 
-    out = {"generated": now.isoformat(timespec="minutes"), "visits_until": end_vis, "wa": wa, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"],
+    out = {"generated": now.isoformat(timespec="minutes"), "visits_until": end_vis, "wa": wa, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"], "leave": leave,
            "tasks": tasks, "orders": orders, "items": items, "inv": inv}
     tmp = os.path.join(HERE, "raw", "crm.json.tmp")
     with open(tmp, "w") as f:

@@ -50,6 +50,7 @@ def main():
         "visits": raw["visits"],
         "comp": raw["comp"],
         "cust": raw.get("cust"),
+        "leave": raw.get("leave"),
         "tasks": raw.get("tasks", []),
         "orders": raw.get("orders", []),
         "items": raw.get("items", []),
