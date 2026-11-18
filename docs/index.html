@@ -295,6 +295,16 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
       <div class="tablewrap" style="max-height:560px;overflow:auto"><table id="visits"></table></div>
     </div>
     <div class="card">
+      <h2 id="ctTitle">Customers to contact</h2>
+      <p class="sub" id="ctSub"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <select id="ctKind" aria-label="Which customers"><option value="groom">Due for grooming</option><option value="vacc">Due for vaccination</option></select>
+        <select id="ctMin" aria-label="How regular"><option value="1">All past customers</option><option value="2">Came 2+ times</option><option value="3">Regulars (3+ times)</option></select>
+        <input id="ctSearch" type="search" placeholder="Search name, pet, area or provider" aria-label="Search customers" style="flex:1;min-width:180px">
+      </div>
+      <div class="tablewrap" style="max-height:560px;overflow:auto"><table id="ctTable"></table></div>
+    </div>
+    <div class="card">
       <h2>Visits by service</h2>
       <p class="sub" id="bySvcSub"></p>
       <div class="tablewrap"><table id="bySvc"></table></div>
@@ -321,7 +331,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <div class="tiles" id="tkTiles"></div>
     <div class="card board-card">
       <div class="board-head">
-        <div><h2>Tasks board</h2><p class="sub" style="margin:0">Tasks from Zoho CRM, grouped by status. Click a group to fold it.</p></div>
+        <div><h2>Tasks board</h2><p class="sub" style="margin:0">Tasks from Zoho CRM, grouped by status. Click a tile above to filter, or a group to fold it.</p><p class="sub" id="tkFilterNote" style="margin:4px 0 0;font-weight:700;color:var(--brand)"></p></div>
         <div class="board-tools">
           <input id="tkSearch" type="search" placeholder="Search tasks" aria-label="Search tasks">
           <select id="tkOwner" aria-label="Filter by person"><option value="">Everyone</option></select>
@@ -491,7 +501,7 @@ function init(data){
   TABS.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
   window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
   showTab(location.hash.slice(1)||'overview');
-  $('xSearch').addEventListener('input',renderStock); $('cpSearch').addEventListener('input',renderComplaints); document.querySelectorAll('#bkRange button').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.r))); $('bkDate').addEventListener('change',e=>{if(e.target.value){BK_DAY=e.target.value; renderBookings(BK_DAY);}}); $('bkPrev').addEventListener('click',()=>bkStep(-1)); $('bkNext').addEventListener('click',()=>bkStep(1)); $('bkToday').addEventListener('click',()=>{BK_DAY=sgNow().day; renderBookings(BK_DAY);}); $('tkSearch').addEventListener('input',renderBoard); $('tkOwner').addEventListener('change',renderBoard); $('cpFilter').addEventListener('change',()=>{renderComplaints(); document.querySelectorAll('#cpTiles .tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===$('cpFilter').value));}); $('xFilter').addEventListener('change',renderStock);
+  $('xSearch').addEventListener('input',renderStock); $('cpSearch').addEventListener('input',renderComplaints); ['ctKind','ctMin'].forEach(i=>$(i).addEventListener('change',renderContacts)); $('ctSearch').addEventListener('input',renderContacts); document.querySelectorAll('#bkRange button').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.r))); $('bkDate').addEventListener('change',e=>{if(e.target.value){BK_DAY=e.target.value; renderBookings(BK_DAY);}}); $('bkPrev').addEventListener('click',()=>bkStep(-1)); $('bkNext').addEventListener('click',()=>bkStep(1)); $('bkToday').addEventListener('click',()=>{BK_DAY=sgNow().day; renderBookings(BK_DAY);}); $('tkSearch').addEventListener('input',renderBoard); $('tkOwner').addEventListener('change',renderBoard); $('cpFilter').addEventListener('change',()=>{renderComplaints(); document.querySelectorAll('#cpTiles .tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===$('cpFilter').value));}); $('xFilter').addEventListener('change',renderStock);
   showUpdated();
   try{ render(sel.value); }
   finally{ pullLive(); setInterval(showUpdated,60*1000);
@@ -692,7 +702,9 @@ function render(day){
   const T=D.tasks||[]; const OPEN_T=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
   const tOpen=T.filter(OPEN_T);
   const since14=addDays(now.day,-14);
-  $('tkTiles').innerHTML=tile('Open tasks',tOpen.length,T.length+' in Zoho CRM')+tile('Overdue',tOpen.filter(t=>t.due&&t.due<now.day).length,'due before today')+tile('Due today',tOpen.filter(t=>t.due===now.day).length,fmtDay(now.day))+tile('Waiting',tOpen.filter(t=>/Waiting/.test(t.s||'')).length,'on a provider, customer or approval')+tile('Done, 14 days',T.filter(t=>t.s==='Completed'&&dayOf(t.cl)>=since14).length,'');
+  const ttile=(f,k,v,d)=>`<div class="tile click${TK_VIEW===f?' on':''}" role="button" tabindex="0" data-f="${f}" title="Show only these tasks"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
+  $('tkTiles').innerHTML=ttile('open','Open tasks',tOpen.length,T.length+' in Zoho CRM')+ttile('overdue','Overdue',tOpen.filter(t=>t.due&&t.due<now.day).length,'due before today')+ttile('today','Due today',tOpen.filter(t=>t.due===now.day).length,fmtDay(now.day))+ttile('waiting','Waiting',tOpen.filter(t=>/Waiting/.test(t.s||'')).length,'on a provider, customer or approval')+ttile('done','Done, 14 days',T.filter(t=>t.s==='Completed'&&dayOf(t.cl)>=since14).length,'');
+  $('tkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{TK_VIEW=TK_VIEW===t.dataset.f?'all':t.dataset.f; $('tkTiles').querySelectorAll('.tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===TK_VIEW)); renderBoard(); $('board').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   const ownSel=$('tkOwner'), cur=ownSel.value; const owners=[...new Set(T.map(t=>t.own).filter(Boolean))].sort();
   ownSel.innerHTML='<option value="">Everyone</option>'+owners.map(o=>`<option${o===cur?' selected':''}>${esc(o)}</option>`).join('');
   renderBoard();
@@ -753,10 +765,16 @@ const AV_COL=['#007f78','#e2445c','#fdab3d','#a25ddc','#579bfc','#00c875','#ff64
 const avCol=n=>{let h=0;for(const c of n||'')h=(h*31+c.charCodeAt(0))>>>0;return AV_COL[h%AV_COL.length];};
 const initials=n=>(n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
 const FOLD={}; 
+let TK_VIEW='all';
+const TK_LABEL={all:'',open:'Open tasks only',overdue:'Overdue tasks only',today:'Tasks due today only',waiting:'Waiting tasks only',done:'Tasks done in the last 14 days only'};
 function renderBoard(){
   const now=sgNow(), q=($('tkSearch').value||'').toLowerCase(), who=$('tkOwner').value;
-  const T=(D.tasks||[]).filter(t=>(!who||t.own===who)&&(!q||[t.sub,t.own,t.type,t.s,t.ho,t.prov,t.bid].join(' ').toLowerCase().includes(q)));
   const since14=addDays(now.day,-14);
+  const isOpen=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
+  const VIEW={all:()=>true, open:isOpen, overdue:t=>isOpen(t)&&t.due&&t.due<now.day, today:t=>isOpen(t)&&t.due===now.day, waiting:t=>isOpen(t)&&/Waiting/.test(t.s||''), done:t=>t.s==='Completed'&&(dayOf(t.cl)||'')>=since14}[TK_VIEW]||(()=>true);
+  const T=(D.tasks||[]).filter(t=>VIEW(t)&&(!who||t.own===who)&&(!q||[t.sub,t.own,t.type,t.s,t.ho,t.prov,t.bid].join(' ').toLowerCase().includes(q)));
+  $('tkFilterNote').innerHTML=TK_VIEW==='all'?'':esc(TK_LABEL[TK_VIEW])+' · <a href="#tasks" id="tkClear">show all</a>';
+  const clr=$('tkClear'); if(clr) clr.addEventListener('click',e=>{e.preventDefault(); TK_VIEW='all'; document.querySelectorAll('#tkTiles .tile.click').forEach(x=>x.classList.remove('on')); renderBoard();});
   const groups=[
     {k:'todo',name:'To do',col:'#579bfc',f:t=>t.s==='Not Started'||!t.s},
     {k:'doing',name:'Working on it',col:'#fdab3d',f:t=>t.s==='In Progress'},
@@ -764,12 +782,14 @@ function renderBoard(){
     {k:'done',name:'Done, last 14 days',col:'#00c875',f:t=>t.s==='Completed'&&(dayOf(t.cl)||'')>=since14},
   ];
   if(!('done' in FOLD)) FOLD.done=true;
+  const filtered=TK_VIEW!=='all';
   const dueCell=t=>{ if(!t.due) return '<td class="due muted">–</td>'; const cls=t.s!=='Completed'&&t.due<now.day?'over':t.s!=='Completed'&&t.due===now.day?'today':''; const d=dparts(t.due); return `<td class="due ${cls}">${MON[d.getUTCMonth()]} ${d.getUTCDate()}${cls==='over'?' · overdue':cls==='today'?' · today':''}</td>`; };
   let html='';
   groups.forEach(g=>{
     const rows=T.filter(g.f).sort((a,b)=>(a.due||'9').localeCompare(b.due||'9'));
+    if(filtered&&!rows.length) return;
     const stc=cnt(rows,t=>t.s||'Not Started');
-    html+=`<div class="grp${FOLD[g.k]?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><span class="chev">▼</span>${esc(g.name)} <span class="n">${rows.length} task${rows.length===1?'':'s'}</span></button><div class="grp-b">`;
+    html+=`<div class="grp${FOLD[g.k]&&!filtered?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><span class="chev">▼</span>${esc(g.name)} <span class="n">${rows.length} task${rows.length===1?'':'s'}</span></button><div class="grp-b">`;
     html+='<table class="btbl"><colgroup><col style="width:34%"><col style="width:13%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup><tr><th style="text-align:left;padding-left:12px">Task</th><th>Owner</th><th>Status</th><th>Due date</th><th>Priority</th><th>Type</th><th>Handover</th></tr>';
     html+=rows.length?rows.map(t=>`<tr><td class="t">${esc(t.sub||'(no subject)')}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}${t.bid||t.prov||t.wait?`<span class="tsub">${esc([t.bid?'Booking '+t.bid:'',t.prov?'Provider '+t.prov:'',t.wait?'Waiting on '+t.wait:''].filter(Boolean).join(' · '))}</span>`:''}</td>
       <td><div class="ownc">${t.own?`<span class="av" style="background:${avCol(t.own)}" title="${esc(t.own)}">${esc(initials(t.own))}</span><span>${esc(t.own.split(' ')[0])}</span>`:'<span class="muted">–</span>'}</div></td>
@@ -781,7 +801,7 @@ function renderBoard(){
     if(rows.length) html+=`<tr class="sum"><td></td><td></td><td><div class="bar100">${Object.entries(stc).map(([k,v])=>`<i title="${esc(k)}: ${v}" style="width:${v/rows.length*100}%;background:${ST_COL[k]||'#c4c4c4'}"></i>`).join('')}</div></td><td></td><td></td><td></td><td></td></tr>`;
     html+='</table></div></div>';
   });
-  $('board').innerHTML=html;
+  $('board').innerHTML=html||'<p class="muted">No tasks match.</p>';
   $('board').querySelectorAll('.grp-h').forEach(h=>h.addEventListener('click',()=>{const g=h.parentElement;FOLD[g.dataset.g]=!g.classList.contains('fold');g.classList.toggle('fold');}));
 }
 
@@ -822,9 +842,14 @@ function renderBookings(day){
   const real=r=>!NOT_REAL.includes(r.s)&&!HIDE_BY.includes(r.by);
   $('byPersonNote').textContent=CFG.by_person_note||'';
   const madeR=made.filter(real);
+  const money0=v=>'$'+Math.round(v||0).toLocaleString();
+  const doneV=vis.filter(r=>r.s==='Completed'), doneAmt=doneV.reduce((a,r)=>a+(r.amt||0),0);
+  const doneOwners=new Set(doneV.map(r=>r.o).filter(Boolean)), repOwners=new Set(doneV.filter(r=>r.rep).map(r=>r.o).filter(Boolean));
   $('bkTiles').innerHTML=tile('made','Bookings made',made.length,isDay?R.label:'avg '+(made.length/nDays).toFixed(1)+' a day')+
     tile('real','Real bookings',madeR.length,'excl. enquiries and not fulfilled')+
     tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',vs.Completed||0,'visits')+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
+    tile('amount','Completed amount',money0(doneAmt),doneV.length+' completed visits, base price')+
+    tile('repeat','Repeat customers',repOwners.size,doneOwners.size?Math.round(repOwners.size/doneOwners.size*100)+'% of '+doneOwners.size+' customers served':'of customers served')+
     tile('upcoming','Upcoming visits',upcoming.length,'tomorrow to '+fmtDay(visUntil)+', not cancelled');
   $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   // month calendar
@@ -865,24 +890,44 @@ function renderBookings(day){
     made:{t:'Bookings made',rows:made,kind:'made'}, real:{t:'Real bookings',rows:madeR,kind:'made'},
     visits:{t:'Visits',rows:vis,kind:'visit'}, completed:{t:'Completed visits',rows:vis.filter(r=>r.s==='Completed'),kind:'visit'},
     cancelled:{t:'Cancelled visits and no-shows',rows:vis.filter(r=>r.s==='Cancelled'||r.s==='No show'),kind:'visit'},
+    amount:{t:'Completed visits with amount',rows:doneV,kind:'visit'}, repeat:{t:'Completed visits by repeat customers',rows:doneV.filter(r=>r.rep),kind:'visit'},
     upcoming:{t:'Upcoming visits',rows:upcoming,kind:'visit',all:true}};
   const V=VIEWS[BK_VIEW]||VIEWS.visits;
   $('visitsTitle').textContent=V.t+', '+(V.all?'tomorrow to '+fmtDay(visUntil):R.label)+' ('+V.rows.length+')';
-  $('visitsSub').textContent=(V.kind==='made'?'Bookings by the time they were created in Zoho CRM.':'Bookings by visit date and time in Zoho CRM.')+' Click a tile above to change this list. No customer details are shown.';
+  $('visitsSub').textContent=(V.kind==='made'?'Bookings by the time they were created in Zoho CRM.':'Bookings by visit date and time in Zoho CRM.')+' Click a tile above to change this list.';
   const multi=!isDay||V.all;
   if(V.kind==='made'){
     $('visits').innerHTML=V.rows.length?'<tr><th>Created</th><th>Service</th><th>Status</th><th>Created by</th><th>Visit</th><th>Provider</th></tr>'+
       V.rows.slice().sort((a,b)=>(a.c||'').localeCompare(b.c||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.c,multi)}</td><td>${esc(r.cat||'No service set')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${esc(r.by||'')}</td><td style="white-space:nowrap" class="muted">${r.d?when(r.d,true):'Not set'}</td><td>${esc(r.p||'')}</td></tr>`).join('')
       :'<tr><td class="muted">Nothing in this range.</td></tr>';
   } else {
-    $('visits').innerHTML=V.rows.length?'<tr><th>'+(multi?'Date and time':'Time')+'</th><th>Service</th><th>Area</th><th>Provider</th><th>Status</th><th>Invoice</th></tr>'+
-      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td class="muted">${esc(r.inv||'')}</td></tr>`).join('')
+    $('visits').innerHTML=V.rows.length?'<tr><th>'+(multi?'Date and time':'Time')+'</th><th>Service</th><th>Area</th><th>Provider</th><th>Status</th><th>Customer</th><th class="num">Amount</th><th>Invoice</th></tr>'+
+      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${r.rep?'<span class="pill brand">repeat</span>':r.o?'<span class="pill">new</span>':''}</td><td class="num">${r.amt!=null?'$'+esc(r.amt):''}</td><td class="muted">${esc(r.inv||'')}</td></tr>`).join('')+(V.rows.length?`<tr><th colspan="6">Total</th><th class="num">${money0(V.rows.reduce((a,r)=>a+(r.amt||0),0))}</th><th></th></tr>`:'')
       :'<tr><td class="muted">Nothing in this range.</td></tr>';
   }
   // by service
   const sd=cnt(vis,r=>r.cat||'No service'), cs=cnt(vis.filter(r=>r.s==='Completed'),r=>r.cat||'No service');
   $('bySvcSub').textContent='Visits in '+R.label+', and how many were completed.';
-  $('bySvc').innerHTML='<tr><th>Service</th><th class="num">Visits</th><th class="num">Completed</th></tr>'+(Object.keys(sd).length?Object.keys(sd).sort((a,b)=>sd[b]-sd[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${sd[k]}</td><td class="num">${cs[k]||0}</td></tr>`).join(''):'<tr><td colspan="3" class="muted">None.</td></tr>');
+  const am={}; doneV.forEach(r=>{const k=r.cat||'No service'; am[k]=(am[k]||0)+(r.amt||0);});
+  $('bySvc').innerHTML='<tr><th>Service</th><th class="num">Visits</th><th class="num">Completed</th><th class="num">Completed amount</th></tr>'+(Object.keys(sd).length?Object.keys(sd).sort((a,b)=>sd[b]-sd[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${sd[k]}</td><td class="num">${cs[k]||0}</td><td class="num">${money0(am[k])}</td></tr>`).join('')+`<tr><th>Total</th><th class="num">${vis.length}</th><th class="num">${doneV.length}</th><th class="num">${money0(doneAmt)}</th></tr>`:'<tr><td colspan="4" class="muted">None.</td></tr>');
+  renderContacts();
+}
+
+function renderContacts(){
+  const C=D.cust||{}, kind=$('ctKind').value, min=+$('ctMin').value, q=($('ctSearch').value||'').toLowerCase(), now=sgNow();
+  const all=(kind==='vacc'?C.vacc:C.groom)||[];
+  const rows=all.filter(x=>x.cnt>=min&&(!q||[x.n,x.pet,x.area,x.prov].join(' ').toLowerCase().includes(q)));
+  const what=kind==='vacc'?'vaccination':'grooming';
+  $('ctTitle').textContent='Customers to contact ('+rows.length+')';
+  $('ctSub').textContent=!D.cust?'This list appears after the next data refresh.':(kind==='vacc'
+    ?'Past customers whose last vaccination visit was about a year ago, or whose next vaccination date in Zoho is due within 30 days, with no vaccination booked.'
+    :'Past customers whose last grooming was 5 weeks to 6 months ago, or whose next grooming date in Zoho is due within 30 days, with no grooming booked. Most regular first.')
+    +' First name and pet only; open the booking in Zoho CRM for contact details.'+(C.asof?' List rebuilt hourly, last at '+t12(C.asof.slice(11,16))+'.':'');
+  const link=id=>id?`<a href="https://crm.zoho.com/crm/org897178504/tab/CustomModule4/${encodeURIComponent(id)}" target="_blank" rel="noopener">Open in Zoho</a>`:'';
+  $('ctTable').innerHTML=rows.length?`<tr><th>Customer</th><th>Pet</th><th>Last ${what}</th><th class="num">Days ago</th><th class="num">Times</th><th>Next date in Zoho</th><th>Area</th><th>Last provider</th><th></th></tr>`+
+    rows.slice(0,300).map(x=>`<tr><td>${esc(x.n||'')}</td><td>${esc(x.pet||'')}</td><td style="white-space:nowrap">${esc(fmtDay(x.last))}</td><td class="num">${x.days}</td><td class="num">${x.cnt}</td><td style="white-space:nowrap">${x.next?esc(fmtDay(x.next))+(x.next<now.day?' <span class="pill warn">passed</span>':''):''}</td><td class="area" title="${esc(x.area||'')}">${esc(x.area||'')}</td><td>${esc(x.prov||'')}</td><td style="white-space:nowrap">${link(x.bid)}</td></tr>`).join('')+
+    (rows.length>300?`<tr><td colspan="9" class="muted">Showing the first 300 of ${rows.length}. Use the filters to narrow it.</td></tr>`:'')
+    :'<tr><td class="muted">No customers match.</td></tr>';
 }
 // grouped bar chart, one y axis, hover tooltip
 function barChart(el,days,series,get,sel,stack,onPick){

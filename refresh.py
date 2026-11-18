@@ -65,6 +65,66 @@ class Zoho:
             off += 2000
 
 
+def customer_history(z, today):
+    """Per-customer history from every booking: first completed visit (for 'repeat'), and who is due
+    for grooming or a vaccination. Heavy (all bookings), so it is cached and rebuilt once an hour."""
+    path = os.path.join(HERE, "raw", "hist_cache.json")
+    try:
+        with open(path) as f:
+            c = json.load(f)
+        if time.time() - c.get("_t", 0) < 3600 and c.get("day") == today.isoformat():
+            return c
+    except (OSError, ValueError):
+        c = None
+    try:
+        rows = z.all("select Pet_Owner, Date_Time, Booking_Status, Service_Category, Next_grooming_appointment, "
+                     "Next_vaccination_appointment, Customer_Clean_Name, Pet_Name, Area, Partner_Name.Name from Booking where Date_Time is not null")
+    except SystemExit:
+        if c:
+            return c  # keep the last good copy if this big query fails
+        raise
+    t = today.isoformat()
+    by = {}
+    for r in rows:
+        o = r.get("Pet_Owner")
+        if isinstance(o, dict) and o.get("id"):
+            by.setdefault(o["id"], []).append(r)
+    first, repeat_owners = {}, 0
+    groom, vacc = [], []
+    first_name = lambda n: (n or "").strip().split(" ")[0][:20]
+    for oid, rs in by.items():
+        done = sorted((r for r in rs if r.get("Booking_Status") == "Completed"), key=lambda r: r["Date_Time"])
+        if not done:
+            continue
+        first[oid] = done[0]["Date_Time"][:10]
+        if len(done) >= 2:
+            repeat_owners += 1
+        future = [r for r in rs if r["Date_Time"][:10] > t and r.get("Booking_Status") not in ("Cancelled", "Not fulfilled", "Refund", "No show")]
+        for cat, out, lo, hi, nxt in (("Grooming", groom, 35, 180, "Next_grooming_appointment"), ("Vaccination", vacc, 335, 450, "Next_vaccination_appointment")):
+            d = [r for r in done if r.get("Service_Category") == cat]
+            if not d or any(r.get("Service_Category") == cat for r in future):
+                continue
+            last = d[-1]
+            days = (today - datetime.fromisoformat(last["Date_Time"][:10]).date()).days
+            sugg = (last.get(nxt) or "")[:10] or None
+            due_by_date = bool(sugg and sugg <= (today + timedelta(days=30)).isoformat())
+            if not (lo <= days <= hi or (due_by_date and days >= 14 and days <= 450)):
+                continue
+            out.append({"n": first_name(last.get("Customer_Clean_Name")), "pet": (last.get("Pet_Name") or "")[:40], "last": last["Date_Time"][:10],
+                        "days": days, "cnt": len(d), "all": len(done), "area": last.get("Area"), "prov": last.get("Partner_Name.Name"),
+                        "next": sugg, "bid": last.get("id")})
+    groom.sort(key=lambda x: (-x["cnt"], x["days"]))
+    vacc.sort(key=lambda x: x["days"], reverse=True)
+    c = {"_t": time.time(), "day": t, "first": first,
+         "cust": {"asof": datetime.now(SGT).isoformat(timespec="minutes"), "owners": len(first), "repeat_owners": repeat_owners,
+                  "groom": groom[:400], "vacc": vacc[:200], "groom_total": len(groom), "vacc_total": len(vacc)}}
+    tmp = path + ".%d.tmp" % os.getpid()
+    with open(tmp, "w") as f:
+        json.dump(c, f)
+    os.replace(tmp, path)
+    return c
+
+
 def rng(d):
     return "between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (d, d)
 
@@ -108,10 +168,22 @@ def main():
         json.dump(cache, f)
     os.replace(ctmp, cpath)
 
-    F = "Created_Time, Date_Time, End_Time, Booking_Status, Service_Category, Created_By, Partner_Name.Name, Area, Invoice_Status, Payment_Method"
+    hist = customer_history(z, today)
+    first = hist["first"]
+    F = "Created_Time, Date_Time, End_Time, Booking_Status, Service_Category, Created_By, Partner_Name.Name, Area, Invoice_Status, Payment_Method, Base_Price, Pet_Owner"
+
+    def owner(r):
+        o = r.get("Pet_Owner")
+        return o.get("id") if isinstance(o, dict) else None
+
+    def repeat(r):  # the customer had a completed visit before this booking's date
+        f = first.get(owner(r) or "")
+        when = (r.get("Date_Time") or r.get("Created_Time") or "")[:10]
+        return bool(f and when and f < when)
     slim = lambda r: {"c": r.get("Created_Time"), "d": r.get("Date_Time"), "e": r.get("End_Time"), "s": r.get("Booking_Status"),
                       "cat": r.get("Service_Category"), "src": None, "by": nm(r.get("Created_By")), "p": r.get("Partner_Name.Name"),
-                      "a": r.get("Area"), "inv": r.get("Invoice_Status"), "pay": r.get("Payment_Method")}
+                      "a": r.get("Area"), "inv": r.get("Invoice_Status"), "pay": r.get("Payment_Method"),
+                      "amt": r.get("Base_Price"), "o": (owner(r) or "")[-7:] or None, "rep": repeat(r)}
     start31 = (today - timedelta(days=13)).replace(day=1).isoformat()  # month of the oldest pickable day
     created = [slim(r) for r in z.all("select %s from Booking where Created_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end14))]
     visits = [slim(r) for r in z.all("select %s from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end_vis))]
@@ -146,7 +218,7 @@ def main():
             "pm": b.get("Payment_Method"), "amt": b.get("Base_Price"), "cat": b.get("Service_Category")}
            for b in z.all("select Date_Time, Booking_Status, Invoice_Status, Paid_On, Payment_Method, Base_Price, Service_Category from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (s30, end14))]
 
-    out = {"generated": now.isoformat(timespec="minutes"), "visits_until": end_vis, "wa": wa, "created": created, "visits": visits, "comp": comp,
+    out = {"generated": now.isoformat(timespec="minutes"), "visits_until": end_vis, "wa": wa, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"],
            "tasks": tasks, "orders": orders, "items": items, "inv": inv}
     tmp = os.path.join(HERE, "raw", "crm.json.tmp")
     with open(tmp, "w") as f:
