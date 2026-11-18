@@ -231,17 +231,12 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="overview">Overview</button>
     <button role="tab" data-tab="workforce">Workforce</button>
+    <button role="tab" data-tab="service">Customer Service</button>
     <button role="tab" data-tab="bookings">Bookings</button>
-    <button role="tab" data-tab="whatsapp">WhatsApp</button>
-    <button role="tab" data-tab="tasks">Tasks</button>
     <button role="tab" data-tab="orders">Orders</button>
     <button role="tab" data-tab="xero">Xero</button>
-    <button role="tab" data-tab="complaints">Complaints</button>
   </nav>
-  <nav class="tabs" role="tablist" id="wfTabs" aria-label="Workforce" style="display:none;margin-top:-6px">
-    <button role="tab" data-wf="schedule">Schedule</button>
-    <button role="tab" data-wf="leave">Time Off</button>
-  </nav>
+  <nav class="tabs" role="tablist" id="wfTabs" aria-label="Sections" style="display:none;margin-top:-6px"></nav>
 
   <!-- OVERVIEW -->
   <section data-panel="overview">
@@ -622,16 +617,19 @@ function init(data){
   sel.value=days.includes(today)?today:days[days.length-1];
   sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; render(sel.value);});
   const TABS=[...document.querySelectorAll('#tabs button')];
-  // Workforce = one tab with two sub-tabs, Schedule and Time Off; #schedule and #leave open the matching sub-tab
-  const WF=['schedule','leave'], WFT=[...document.querySelectorAll('#wfTabs button')];
-  let WF_SUB='schedule';
-  const showTab=t=>{ if(WF.includes(t)){ WF_SUB=t; t='workforce'; } else if(t!=='workforce'&&!TABS.some(b=>b.dataset.tab===t)) t='overview';
-    const wf=t==='workforce', panel=wf?WF_SUB:t;
+  // Two main tabs are groups with sub-tabs. The old links (#schedule, #leave, #whatsapp, #tasks, #complaints)
+  // open the matching sub-tab, and each group remembers the sub-tab last opened.
+  const GROUPS={workforce:[['schedule','Schedule'],['leave','Time Off']], service:[['tasks','Tasks'],['whatsapp','WhatsApp'],['complaints','Complaints']]};
+  const SUB={workforce:'schedule',service:'tasks'};
+  const groupOf=p=>Object.keys(GROUPS).find(g=>GROUPS[g].some(x=>x[0]===p));
+  const showTab=t=>{ const g0=groupOf(t); if(g0){ SUB[g0]=t; t=g0; } else if(!GROUPS[t]&&!TABS.some(b=>b.dataset.tab===t)) t='overview';
+    const grp=GROUPS[t], panel=grp?SUB[t]:t, bar=$('wfTabs');
     TABS.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-    $('wfTabs').style.display=wf?'':'none'; WFT.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.wf===WF_SUB)));
+    bar.style.display=grp?'':'none';
+    bar.innerHTML=grp?grp.map(([p,l])=>`<button role="tab" data-wf="${p}" aria-selected="${p===panel}">${esc(l)}</button>`).join(''):'';
     document.querySelectorAll('section[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===panel));
     try{history.replaceState(null,'','#'+panel)}catch(e){} };
-  WFT.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.wf)));
+  $('wfTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-wf]'); if(b) showTab(b.dataset.wf); });
   TABS.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
   window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
   showTab(location.hash.slice(1)||'overview');
