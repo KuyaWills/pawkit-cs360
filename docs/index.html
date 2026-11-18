@@ -1085,7 +1085,7 @@ function renderBookings(day){
   else { for(let d=R.from; d<=R.to && d<=now.day; d=addDays(d,1)) if(d>=dataFrom) cdays.push(d); }
   const nDays=Math.max(1,(isDay?1:cdays.length));
   const upcoming=D.visits.filter(r=>dayOf(r.d)>now.day && r.s!=='Cancelled');
-  const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'').replace(/\$[\d,]+/g,m=>'<b>'+m+'</b>')}</div></div>`;
+  const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'').replace(/\$\d+(,\d{3})*/g,m=>'<b>'+m+'</b>')}</div></div>`;
   const NOT_REAL=['New enquiry','Not fulfilled','Archive'], HIDE_BY=CFG.hide_by||[];
   const real=r=>!NOT_REAL.includes(r.s)&&!HIDE_BY.includes(r.by);
   $('byPersonNote').textContent=CFG.by_person_note||'';
