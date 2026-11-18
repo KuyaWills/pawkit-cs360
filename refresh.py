@@ -80,7 +80,7 @@ def whatsapp_status(z, now):
     """Looks at the last 48 hours of one-to-one WhatsApp messages and groups them by customer. A conversation is
     'waiting' when the customer's latest message has no Pawkit message after it (a bare thanks/ok/emoji does not count
     as needing a reply). It is 'urgent' when it has waited URGENT_AFTER_MIN minutes or contains an urgent word.
-    No message text is published: only the customer's CRM name, the last 4 digits of the number and the times."""
+    No message text is published: only the customer's name, their number and the times."""
     start = (now - timedelta(hours=48)).isoformat(timespec="seconds")
     q = ("select %sFrom, %sTo, %sDirection, %sMessage_Type, %sMessage_Date_time, %sMember_Id, %sMessage_Data, %sLead.Full_Name from %sWoztell_logs "
          "where %sMessage_Date_time between '%s' and '%s'" % (W, W, W, W, W, W, W, W, W, W, start, now.isoformat(timespec="seconds")))
@@ -101,7 +101,7 @@ def whatsapp_status(z, now):
                     text = str(r.get(W + "Message_Data") or "")
             c["pend"].append((t, typ, text))
             c["ins"] += 1; c["last_in"] = t
-            c["tel"] = (r.get(W + "From") or "")[-4:]
+            c["tel"] = "".join(ch for ch in (r.get(W + "From") or "") if ch.isdigit())
             c["name"] = r.get(W + "Lead.Full_Name") or c["name"]
         elif typ != "TEMPLATE":            # templates are reminders and broadcasts, not replies
             if c["pend"]:
@@ -134,6 +134,34 @@ def whatsapp_status(z, now):
                                    "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word)})
         if c["last_in"] and c["last_in"][:10] == today:
             waits_today += c["waits"][-3:]
+    # a number the WhatsApp log has no name for: look it up in the customer list (found names are remembered,
+    # misses are retried after an hour)
+    npath = os.path.join(HERE, "raw", "wa_names.json")
+    try:
+        with open(npath) as f:
+            names = json.load(f)
+    except (OSError, ValueError):
+        names = {}
+    for w in out["waiting"]:
+        tel = w["tel"]
+        if w["name"] or len(tel) < 8:
+            continue
+        hit = names.get(tel)
+        if not hit or (not hit.get("n") and time.time() - hit.get("t", 0) > 3600):
+            t8 = tel[-8:]
+            pats = [t8, t8[:4] + " " + t8[4:]]
+            cond = "((Mobile_Number like '%%%s' or Mobile_Number like '%%%s') or (Alternative_contact like '%%%s' or Alternative_contact like '%%%s'))" % (pats[0], pats[1], pats[0], pats[1])
+            try:
+                j = z.coql("select Name from Customers_1 where %s limit 1" % cond)
+                hit = {"n": ((j.get("data") or [{}])[0].get("Name") or "").strip(), "t": time.time()}
+            except SystemExit as e:
+                print("WARNING customer name lookup failed:", str(e)[:120])
+                hit = {"n": "", "t": time.time()}
+            names[tel] = hit
+        if hit.get("n"):
+            w["name"], w["src"] = hit["n"], "customer list"
+    with open(npath, "w") as f:
+        json.dump(names, f)
     out["waiting"].sort(key=lambda w: -w["mins"])
     waits_today.sort()
     out["median_reply_min"] = round(waits_today[len(waits_today) // 2], 1) if waits_today else None

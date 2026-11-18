@@ -94,6 +94,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .tabs button{border:1px solid transparent;border-radius:999px;padding:8px 16px;font-weight:700}
 .tabs button:hover{background:var(--brand-soft)}
 .tabs button[aria-selected="true"]{color:#fff;background:var(--brand);border-color:var(--brand)}
+#wfTabs button{font-size:13px;padding:6px 14px}
+#wfTabs button[aria-selected="true"]{color:var(--brand);background:var(--brand-soft);border-color:var(--brand)}
 section[data-panel]{display:none}
 section[data-panel].active{display:block}
 .tl{min-width:640px;font-size:13px}
@@ -228,14 +230,17 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="overview">Overview</button>
-    <button role="tab" data-tab="schedule">Schedule</button>
+    <button role="tab" data-tab="workforce">Workforce</button>
     <button role="tab" data-tab="bookings">Bookings</button>
     <button role="tab" data-tab="whatsapp">WhatsApp</button>
     <button role="tab" data-tab="tasks">Tasks</button>
     <button role="tab" data-tab="orders">Orders</button>
     <button role="tab" data-tab="xero">Xero</button>
-    <button role="tab" data-tab="leave">Time Off</button>
     <button role="tab" data-tab="complaints">Complaints</button>
+  </nav>
+  <nav class="tabs" role="tablist" id="wfTabs" aria-label="Workforce" style="display:none;margin-top:-6px">
+    <button role="tab" data-wf="schedule">Schedule</button>
+    <button role="tab" data-wf="leave">Time Off</button>
   </nav>
 
   <!-- OVERVIEW -->
@@ -331,7 +336,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
       <div class="tiles" id="waNowTiles"></div>
       <div class="card">
         <h2 id="waNowTitle">Waiting for a reply</h2>
-        <p class="sub">Longest wait first. Message text is not shown here: find the chat in WOZTELL by the name or the last 4 digits of the number.</p>
+        <p class="sub">Longest wait first. Message text is not shown here: find the chat in WOZTELL by the name or the number.</p>
         <div class="tablewrap"><table id="waNow"></table></div>
       </div>
     </div>
@@ -406,7 +411,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
   </section>
 
   <!-- LEAVE -->
-  <section data-panel="leave">
+  <section data-panel="leave" id="timeoff">
     <div class="tiles" id="lvTiles"></div>
     <div class="two">
       <div class="card">
@@ -580,6 +585,7 @@ let DECIDE=null;
 })();
 // WhatsApp reply status: answered, waiting, needs urgent care (worked out by refresh.py from the last 48 hours)
 let WN_F='waiting';
+const telFmt=t=>{ t=String(t||''); if(/^65\d{8}$/.test(t)) return '+65 '+t.slice(2,6)+' '+t.slice(6); return t?'+'+t:''; };
 function renderWaNow(){
   const W=D.wa_now, wrap=$('waNowWrap'); if(!W){ wrap.style.display='none'; return; } wrap.style.display='';
   const gen=new Date(D.generated), age=m=>{ m=Math.max(0,Math.round(m)); return m<60?m+' min':m<1440?Math.floor(m/60)+' h '+(m%60)+' min':Math.floor(m/1440)+' d '+Math.floor(m%1440/60)+' h'; };
@@ -594,7 +600,7 @@ function renderWaNow(){
     t('all','Typical reply time',W.median_reply_min==null?'–':age(W.median_reply_min),'median today, customer message to reply');
   const V=WN_F==='urgent'?urg:wt;
   $('waNowTitle').textContent=(WN_F==='urgent'?'Needs urgent care':'Waiting for a reply')+' ('+V.length+')';
-  $('waNow').innerHTML=V.length?'<tr><th>Customer</th><th>Number ends</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map(w=>`<tr><td>${esc(w.name||'Not in CRM by name')}</td><td>${esc(w.tel||'')}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
+  $('waNow').innerHTML=V.length?'<tr><th>Customer</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map(w=>`<tr><td>${esc(w.name||'No name in Zoho')}</td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
 }
 document.addEventListener('click',e=>{ const t=e.target.closest('[data-wn]'); if(!t) return; WN_F=t.dataset.wn==='all'?'waiting':t.dataset.wn; renderWaNow(); $('waNow').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); });
 // sick leave needs a medical document: say whether one is attached to the request in Zoho
@@ -616,10 +622,16 @@ function init(data){
   sel.value=days.includes(today)?today:days[days.length-1];
   sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; render(sel.value);});
   const TABS=[...document.querySelectorAll('#tabs button')];
-  const showTab=t=>{ if(!TABS.some(b=>b.dataset.tab===t)) t='overview';
+  // Workforce = one tab with two sub-tabs, Schedule and Time Off; #schedule and #leave open the matching sub-tab
+  const WF=['schedule','leave'], WFT=[...document.querySelectorAll('#wfTabs button')];
+  let WF_SUB='schedule';
+  const showTab=t=>{ if(WF.includes(t)){ WF_SUB=t; t='workforce'; } else if(t!=='workforce'&&!TABS.some(b=>b.dataset.tab===t)) t='overview';
+    const wf=t==='workforce', panel=wf?WF_SUB:t;
     TABS.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
-    document.querySelectorAll('section[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===t));
-    try{history.replaceState(null,'','#'+t)}catch(e){} };
+    $('wfTabs').style.display=wf?'':'none'; WFT.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.wf===WF_SUB)));
+    document.querySelectorAll('section[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===panel));
+    try{history.replaceState(null,'','#'+panel)}catch(e){} };
+  WFT.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.wf)));
   TABS.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
   window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
   showTab(location.hash.slice(1)||'overview');
