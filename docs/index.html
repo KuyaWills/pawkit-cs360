@@ -989,12 +989,17 @@ function renderBookings(day){
   $('byPersonNote').textContent=CFG.by_person_note||'';
   const madeR=made.filter(real);
   const money0=v=>'$'+Math.round(v||0).toLocaleString();
-  const doneV=vis.filter(r=>r.s==='Completed'), doneAmt=doneV.reduce((a,r)=>a+(r.amt||0),0);
+  // a visit counts as done when Zoho says Completed, or when its time has passed and Zoho still says Scheduled
+  // (many past visits are never moved to Completed in Zoho)
+  const nowIso=now.day+'T'+String(Math.floor(now.min/60)).padStart(2,'0')+':'+String(now.min%60).padStart(2,'0');
+  const isDone=r=>r.s==='Completed'||(r.s==='Scheduled'&&(r.e||r.d||'').slice(0,16)<nowIso);
+  const doneV=vis.filter(isDone), lagN=doneV.filter(r=>r.s!=='Completed').length, lagTxt=lagN?', incl. '+lagN+' past, still Scheduled in Zoho':'', doneAmt=doneV.reduce((a,r)=>a+(r.amt||0),0);
+  const toCome=vis.filter(r=>r.s==='Scheduled'&&!isDone(r));
   const doneOwners=new Set(doneV.map(r=>r.o).filter(Boolean)), repOwners=new Set(doneV.filter(r=>r.rep).map(r=>r.o).filter(Boolean));
   $('bkTiles').innerHTML=tile('made','Bookings made',made.length,isDay?R.label:'avg '+(made.length/nDays).toFixed(1)+' a day')+
     tile('real','Real bookings',madeR.length,'excl. enquiries and not fulfilled')+
-    tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',vs.Completed||0,'visits')+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
-    tile('amount','Completed amount',money0(doneAmt),doneV.length+' completed visits, base price')+
+    tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',doneV.length,'visits'+lagTxt)+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
+    tile('amount','Completed amount',money0(doneAmt),doneV.length+' completed visits, base price'+lagTxt+(toCome.length?'. '+money0(toCome.reduce((a,r)=>a+(r.amt||0),0))+' still to come ('+toCome.length+' scheduled)':''))+
     tile('repeat','Repeat customers',repOwners.size,doneOwners.size?Math.round(repOwners.size/doneOwners.size*100)+'% of '+doneOwners.size+' customers served':'of customers served')+
     tile('upcoming','Upcoming visits',upcoming.length,'tomorrow to '+fmtDay(visUntil)+', not cancelled');
   $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
@@ -1034,7 +1039,7 @@ function renderBookings(day){
   const when=(iso,withDay)=>iso?(withDay?esc(fmtDay(dayOf(iso)))+', ':'')+esc(t12(timeOf(iso))):'';
   const VIEWS={
     made:{t:'Bookings made',rows:made,kind:'made'}, real:{t:'Real bookings',rows:madeR,kind:'made'},
-    visits:{t:'Visits',rows:vis,kind:'visit'}, completed:{t:'Completed visits',rows:vis.filter(r=>r.s==='Completed'),kind:'visit'},
+    visits:{t:'Visits',rows:vis,kind:'visit'}, completed:{t:'Completed visits',rows:doneV,kind:'visit'},
     cancelled:{t:'Cancelled visits and no-shows',rows:vis.filter(r=>r.s==='Cancelled'||r.s==='No show'),kind:'visit'},
     amount:{t:'Completed visits with amount',rows:doneV,kind:'visit'}, repeat:{t:'Completed visits by repeat customers',rows:doneV.filter(r=>r.rep),kind:'visit'},
     upcoming:{t:'Upcoming visits',rows:upcoming,kind:'visit',all:true}};
@@ -1052,7 +1057,7 @@ function renderBookings(day){
       :'<tr><td class="muted">Nothing in this range.</td></tr>';
   }
   // by service
-  const sd=cnt(vis,r=>r.cat||'No service'), cs=cnt(vis.filter(r=>r.s==='Completed'),r=>r.cat||'No service');
+  const sd=cnt(vis,r=>r.cat||'No service'), cs=cnt(doneV,r=>r.cat||'No service');
   $('bySvcSub').textContent='Visits in '+R.label+', and how many were completed.';
   const am={}; doneV.forEach(r=>{const k=r.cat||'No service'; am[k]=(am[k]||0)+(r.amt||0);});
   $('bySvc').innerHTML='<tr><th>Service</th><th class="num">Visits</th><th class="num">Completed</th><th class="num">Completed amount</th></tr>'+(Object.keys(sd).length?Object.keys(sd).sort((a,b)=>sd[b]-sd[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${sd[k]}</td><td class="num">${cs[k]||0}</td><td class="num">${money0(am[k])}</td></tr>`).join('')+`<tr><th>Total</th><th class="num">${vis.length}</th><th class="num">${doneV.length}</th><th class="num">${money0(doneAmt)}</th></tr>`:'<tr><td colspan="4" class="muted">None.</td></tr>');
