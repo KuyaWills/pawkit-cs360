@@ -46,6 +46,8 @@ button:disabled,input:disabled{opacity:.5;cursor:default}
 .tile .v{font-size:30px;font-weight:900;color:var(--head);letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
 .tile .d{color:var(--ink3);font-size:12.5px;margin-top:2px}
 .tile .d b{color:var(--head);font-weight:800}
+.tile.redtile{background:var(--bad-bg);border-color:#f3c9c5}
+.tile.redtile .v,.tile.redtile .d b{color:var(--bad)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:820px){.two{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -1096,15 +1098,17 @@ function renderBookings(day){
   const nowIso=now.day+'T'+String(Math.floor(now.min/60)).padStart(2,'0')+':'+String(now.min%60).padStart(2,'0');
   const isDone=r=>r.s==='Completed'||(r.s==='Scheduled'&&(r.e||r.d||'').slice(0,16)<nowIso);
   const doneV=vis.filter(isDone), lagN=doneV.filter(r=>r.s!=='Completed').length, lagTxt=lagN?', incl. '+lagN+' past, still Scheduled in Zoho':'', doneAmt=doneV.reduce((a,r)=>a+(r.amt||0),0);
+  const cancV=vis.filter(r=>r.s==='Cancelled'||r.s==='No show');
   const repAmt=doneV.filter(r=>r.rep).reduce((a,r)=>a+(r.amt||0),0);
   const toCome=vis.filter(r=>r.s==='Scheduled'&&!isDone(r));
   const doneOwners=new Set(doneV.map(r=>r.o).filter(Boolean)), repOwners=new Set(doneV.filter(r=>r.rep).map(r=>r.o).filter(Boolean));
   $('bkTiles').innerHTML=tile('made','Bookings made',made.length,isDay?R.label:'avg '+(made.length/nDays).toFixed(1)+' a day')+
     tile('real','Real bookings',madeR.length,'excl. enquiries and not fulfilled')+
-    tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',doneV.length,'visits'+lagTxt)+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
+    tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',doneV.length,'visits'+lagTxt)+tile('cancelled','Cancelled',cancV.length,'incl. no-shows. '+money0(cancV.reduce((a,r)=>a+(r.amt||0),0))+' at base price')+
     tile('amount','Completed amount',money0(doneAmt),doneV.length+' completed visits, base price'+lagTxt+(toCome.length?'. '+money0(toCome.reduce((a,r)=>a+(r.amt||0),0))+' still to come ('+toCome.length+' scheduled)':''))+
     tile('repeat','Repeat customers',repOwners.size,(doneOwners.size?Math.round(repOwners.size/doneOwners.size*100)+'% of '+doneOwners.size+' customers served':'of customers served')+(doneAmt?'. '+money0(repAmt)+', '+Math.round(repAmt/doneAmt*100)+'% of the completed amount':''))+
     tile('upcoming','Upcoming visits',upcoming.length,'tomorrow to '+fmtDay(visUntil)+', not cancelled. '+money0(upcoming.reduce((a,r)=>a+(r.amt||0),0))+' expected, base price');
+  { const ct=$('bkTiles').querySelector('.tile[data-v=cancelled]'); if(ct) ct.classList.add('redtile'); }
   $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   // month calendar
   const calCard=$('bkCalCard');
