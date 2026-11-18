@@ -48,11 +48,20 @@ def main():
         leave = (leave or []) + [{"id": "pb%d" % i, "name": r["name"], "type": r["type"], "from": r["from"], "to": r["to"], "status": "Approved",
                                   "note": r.get("note"), "by": "Payboy", "src": "Payboy", "cover": None, "asked": None, "when": None}
                                  for i, r in enumerate(pb["rows"])]
+    # running number of this update (kept in raw/seq.txt); it picks the rotating branch the update is published to
+    seq_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw", "seq.txt")
+    try:
+        seq = int(open(seq_path).read().strip()) + 1
+    except (OSError, ValueError):
+        seq = 1
+    with open(seq_path, "w") as f:
+        f.write(str(seq))
     payload = {
         "generated": raw.get("generated") or datetime.now(SGT).isoformat(timespec="minutes"),
         "visits_until": raw.get("visits_until"),
         "refresh_seconds": REFRESH_SECONDS,
-        "slots": 10,   # publish.sh also writes each update to branch d<minute % 10>; the page reads the next one from there
+        "slots": 10,   # publish.sh also writes each update to branch d<seq % 10>; the page reads update seq+1 from there
+        "seq": seq,
         "wa": raw["wa"],
         "wa_now": raw.get("wa_now"),
         "created": raw["created"],

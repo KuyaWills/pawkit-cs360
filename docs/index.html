@@ -802,13 +802,13 @@ function scheduleNext(){
   if(!(wait>=10e3)) wait = MISSES<4 ? (D.refresh_seconds<=60?30e3:60e3) : 5*60e3;
   POLL_TIMER=setTimeout(pullLive,Math.min(wait,7*60e3));
 }
-// While updates arrive on schedule, read the next one from its rotating branch (d0..d9 by the minute it was
-// generated): that address has not been asked for in 10 minutes, so GitHub's 5-minute file cache cannot serve it
+// While updates arrive on schedule, read the next one from its rotating branch (d0..d9 by the update's
+// running number): that address has not been asked for in 10 minutes, so GitHub's 5-minute file cache cannot serve it
 // stale and the rate-limited API is not needed. Anything unexpected falls back to fetchLive().
 async function fetchNext(){
   const g=new Date(D.generated).getTime(), step=(D.refresh_seconds||120)*1e3;
-  if(D.slots&&Date.now()-g<step*3){
-    try{ const E=await getJSON(LIVE_SLOT(new Date(g+step+1500).getUTCMinutes()%D.slots),{cache:'no-store'}); E.__slot=true; return E; }catch(e){}
+  if(D.slots&&D.seq&&Date.now()-g<step*3){
+    try{ const E=await getJSON(LIVE_SLOT((D.seq+1)%D.slots),{cache:'no-store'}); E.__slot=true; return E; }catch(e){}
   }
   return fetchLive();
 }
