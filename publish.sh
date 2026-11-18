@@ -17,7 +17,12 @@ rm -f .git/index.lock
 git add data.json
 git commit -q --amend -m "data" 2>/dev/null || git commit -q -m "data"
 tok=$(gh auth token -h github.com -u pawslyOps)
-GH_TOKEN=$tok GIT_TERMINAL_PROMPT=0 git push -q -f origin data
+# Also write the update to one of ten rotating branches (d0..d9, by the minute it was generated). GitHub's file
+# server caches each address for 5 minutes; a rotating address is only asked for once every 10 minutes, so the page
+# always gets the fresh copy from it without using the rate-limited API.
+slot=$(python3 -c "import json;print(int(json.load(open('../raw/crm.json'))['generated'][14:16])%10)" 2>/dev/null || echo "")
+if [ -n "$slot" ]; then GH_TOKEN=$tok GIT_TERMINAL_PROMPT=0 git push -q -f origin data "data:refs/heads/d$slot"
+else GH_TOKEN=$tok GIT_TERMINAL_PROMPT=0 git push -q -f origin data; fi
 # superseded snapshots are only kept alive by reflogs: drop them so .publish stays small
 git reflog expire --expire=now --all 2>/dev/null || true
 git gc -q --prune=now 2>/dev/null || true

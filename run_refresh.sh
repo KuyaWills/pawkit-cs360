@@ -1,5 +1,5 @@
 #!/bin/zsh
-# launchd entry point (every 5 min): refresh from Zoho, encrypt, publish. Log: logs/refresh.log
+# launchd entry point (every minute): refresh from Zoho, encrypt, publish. Log: logs/refresh.log
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 cd "${0:A:h}"
 mkdir -p logs raw out

@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives import hashes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ITER = 310000
-REFRESH_SECONDS = 120  # keep equal to StartInterval in com.pawkit.cs360-refresh.plist; the page times its checks from it
+REFRESH_SECONDS = 60  # keep equal to StartInterval in com.pawkit.cs360-refresh.plist; the page times its checks from it
 SGT = timezone(timedelta(hours=8))
 
 
@@ -52,6 +52,7 @@ def main():
         "generated": raw.get("generated") or datetime.now(SGT).isoformat(timespec="minutes"),
         "visits_until": raw.get("visits_until"),
         "refresh_seconds": REFRESH_SECONDS,
+        "slots": 10,   # publish.sh also writes each update to branch d<minute % 10>; the page reads the next one from there
         "wa": raw["wa"],
         "wa_now": raw.get("wa_now"),
         "created": raw["created"],
