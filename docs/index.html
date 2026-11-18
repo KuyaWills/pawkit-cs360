@@ -798,17 +798,22 @@ async function fetchLive(){
 // if it is late (Mac asleep or offline), retry each minute a few times, then every 5 minutes.
 function scheduleNext(){
   clearTimeout(POLL_TIMER);
-  let wait=new Date(D.generated).getTime()+((D.refresh_seconds||300)+(D.refresh_seconds<=60?45:90))*1e3-Date.now();
-  if(!(wait>=10e3)) wait = MISSES<4 ? (D.refresh_seconds<=60?30e3:60e3) : 5*60e3;
+  const step=(D.refresh_seconds||300)*1e3, lead=(D.refresh_seconds<=60?60:90)*1e3, g=new Date(D.generated).getTime();
+  let wait=g+(slotsOn()?(1+SLOT_MISS)*step:step)+lead-Date.now();
+  if(!(wait>=5e3)) wait = (slotsOn()&&Date.now()-g<step*8) ? 5e3 : (MISSES<4 ? (D.refresh_seconds<=60?30e3:60e3) : 5*60e3);
   POLL_TIMER=setTimeout(pullLive,Math.min(wait,7*60e3));
 }
-// While updates arrive on schedule, read the next one from its rotating branch (d0..d9 by the update's
-// running number): that address has not been asked for in 10 minutes, so GitHub's 5-minute file cache cannot serve it
-// stale and the rate-limited API is not needed. Anything unexpected falls back to fetchLive().
+// Each update is also published to a rotating branch (d0..d9, by the update's running number). The page reads
+// update seq+1 from its branch once it is due: that address has not been asked for in 10 minutes, so GitHub's
+// 5-minute file cache cannot serve it stale, and the rate-limited API is not needed. If a copy is not newer
+// (asked a little early, or the Mac skipped a beat), the page moves on to the following one instead of asking
+// the same address again; after a few misses it falls back to fetchLive().
+let SLOT_MISS=0;
+const slotsOn=()=>!!(D.slots&&D.seq&&SLOT_MISS<4);
 async function fetchNext(){
   const g=new Date(D.generated).getTime(), step=(D.refresh_seconds||120)*1e3;
-  if(D.slots&&D.seq&&Date.now()-g<step*3){
-    try{ const E=await getJSON(LIVE_SLOT((D.seq+1)%D.slots),{cache:'no-store'}); E.__slot=true; return E; }catch(e){}
+  if(slotsOn()&&Date.now()-g<step*8){
+    try{ const E=await getJSON(LIVE_SLOT((D.seq+1+SLOT_MISS)%D.slots),{cache:'no-store'}); E.__slot=true; return E; }catch(e){ SLOT_MISS++; }
   }
   return fetchLive();
 }
@@ -819,8 +824,9 @@ async function pullLive(){
 async function pullLiveOnce(){
   let E,N;
   try{ E=await fetchNext(); }catch(e){ console.warn('live update skipped',e); MISSES++; return; }
-  if(E.__slot){   // the rotating copy was not newer (update late or skipped a minute): ask the authoritative file
-    try{ const n=await decrypt(PW,E); if(n.generated<=D.generated) E=await fetchLive(); }catch(e){ try{ E=await fetchLive(); }catch(e2){ MISSES++; return; } }
+  if(E.__slot){   // a rotating copy that is not newer: do not ask that address again, move on to the following one
+    let n=null; try{ n=await decrypt(PW,E); }catch(e){}
+    if(!n||n.generated<=D.generated){ SLOT_MISS++; MISSES++; return; }
   }
   try{ N=await decrypt(PW,E); }
   catch(e){
@@ -837,7 +843,7 @@ async function pullLiveOnce(){
     const days=Object.keys(D.wa).sort();
     sel.innerHTML=days.slice().reverse().map(d=>`<option value="${d}">${fmtDay(d)}${d===today?' (today)':''}</option>`).join('');
     sel.value=(!USER_PICKED||!days.includes(cur))?(days.includes(today)?today:days[days.length-1]):cur;
-    render(sel.value); MISSES=0; LIVE_FAILED=false; showUpdated();
+    render(sel.value); MISSES=0; SLOT_MISS=0; LIVE_FAILED=false; showUpdated();
   }catch(e){
     console.error('live update failed',e); MISSES++; LIVE_FAILED=true;
     D=prevD; CFG=prevC; sel.innerHTML=prevHTML; sel.value=cur;
