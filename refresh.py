@@ -298,13 +298,13 @@ def main():
     created = [slim(r) for r in z.all("select %s from Booking where Created_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end14))]
     visits = [slim(r) for r in z.all("select %s from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end_vis))]
 
-    comp = [{"n": c.get("Name"), "cd": c.get("Complaint_Date"), "c": c.get("Created_Time"), "s": c.get("Complaint_Status"),
+    comp = [{"id": c.get("id"), "n": c.get("Name"), "cd": c.get("Complaint_Date"), "c": c.get("Created_Time"), "s": c.get("Complaint_Status"),
              "pr": c.get("Priority"), "cat": c.get("Complaint_Category"), "p": c.get("Provider.Name"), "f": c.get("Follow_up_Date"),
              "rf": c.get("Refund_Required"), "ra": c.get("Refund_Amount"),
              "o": nm(c.get("Owner")), "desc": " ".join((c.get("Complaint_Description") or "").split())[:400], "res": " ".join((c.get("Resolution") or "").split())[:250]}
             for c in z.all("select Name, Owner, Complaint_Date, Created_Time, Complaint_Status, Priority, Complaint_Category, Provider.Name, Follow_up_Date, Refund_Required, Refund_Amount, Complaint_Description, Resolution from Complaints where id is not null")]
 
-    tasks = [{"sub": t.get("Subject"), "s": t.get("Status"), "pr": t.get("Priority"), "due": t.get("Due_Date"), "own": nm(t.get("Owner")),
+    tasks = [{"id": t.get("id"), "sub": t.get("Subject"), "s": t.get("Status"), "pr": t.get("Priority"), "due": t.get("Due_Date"), "own": nm(t.get("Owner")),
               "by": nm(t.get("Created_By")), "type": t.get("Task_Type"), "svc": t.get("Service_Type"), "ho": t.get("Handover_To"),
               "hos": t.get("Handover_Status"), "dl": t.get("Action_Deadline"), "c": t.get("Created_Time"), "cl": t.get("Closed_Time"),
               "bid": t.get("Booking_ID"), "wait": t.get("Waiting_On"), "prov": t.get("Provider_Assigned"), "inv": t.get("Invoiced"),

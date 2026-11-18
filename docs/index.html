@@ -195,6 +195,31 @@ details.fold>summary .foldhint{margin-left:auto;font-size:13px;color:var(--brand
 details.fold>summary .foldhint::after{content:"Show ▾"}
 details.fold[open]>summary .foldhint::after{content:"Hide ▴"}
 details.fold[open]>summary{margin-bottom:10px}
+
+.ov{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.ov{grid-template-columns:1fr}}
+.ovc{margin:0;padding:18px 18px 14px}
+.ovh{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.ovh h2{margin:0;font-size:17px}
+.ovh .eyebrow{font-size:11px}
+.ovh a{margin-left:auto;font-size:13px;font-weight:700;color:var(--brand);text-decoration:none;cursor:pointer}
+.ovs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:420px){.ovs{grid-template-columns:repeat(2,1fr)}}
+.tile.ovstat{background:none;border:0;border-radius:10px;padding:6px 6px 6px 0;cursor:pointer}
+.tile.ovstat:hover .k{color:var(--brand)}
+.tile.ovstat .v{font-size:26px;margin:0}
+.tile.ovstat .k{font-size:12.5px;line-height:1.3}
+.ovf{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ovf .chip{border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--ink2);background:var(--surface)}
+.ovf .chip.on{background:var(--good-bg);color:var(--good);border-color:transparent;font-weight:700}
+.ovf .chip.off{color:var(--ink3)}
+.ovf .chip.lv{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+
+.ovl{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}
+.ovl a{color:var(--brand);font-weight:700;text-decoration:none}
+.ovl a:hover{text-decoration:underline}
+td a[title="Open in Zoho"]{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--brand)}
 </style>
 </head>
 <body>
@@ -249,12 +274,7 @@ details.fold[open]>summary{margin-bottom:10px}
   <!-- OVERVIEW -->
   <section data-panel="overview">
     <div id="flags" class="flags" style="margin-bottom:14px"></div>
-    <div class="tiles" id="tiles"></div>
-    <div class="card">
-      <h2>Who is working</h2>
-      <p class="sub" id="whoSub"></p>
-      <div class="tablewrap"><table id="who"></table></div>
-    </div>
+    <div class="ov" id="ov"></div>
   </section>
 
   <!-- SCHEDULE -->
@@ -587,6 +607,8 @@ let DECIDE=null;
   window.decideDraw=draw; draw();
 })();
 // WhatsApp reply status: answered, waiting, needs urgent care (worked out by refresh.py from the last 48 hours)
+// a record name that opens that record in Zoho CRM (link bases come from the private config)
+const recLink=(kind,id,text)=>{ const b=((CFG&&CFG.links||{}).record||{})[kind]; return b&&id?`<a href="${esc(b+encodeURIComponent(id))}" target="_blank" rel="noopener" title="Open in Zoho">${esc(text)}</a>`:esc(text); };
 let WN_F='waiting';
 const telFmt=t=>{ t=String(t||''); if(/^65\d{8}$/.test(t)) return '+65 '+t.slice(2,6)+' '+t.slice(6); return t?'+'+t:''; };
 function renderWaNow(){
@@ -765,25 +787,55 @@ function render(day){
   if((vs['To be Rescheduled']||0)+(vs['Pending Provider Time Slot']||0)+(vs['Pending Owner Confirmation']||0)) flags.push(['warn',`${(vs['To be Rescheduled']||0)+(vs['Pending Provider Time Slot']||0)+(vs['Pending Owner Confirmation']||0)} visit${vis.length===1?'':'s'} on this day still pending or to be rescheduled.`]);
   $('flags').innerHTML=flags.map(([k,t])=>`<div class="flag ${k}">${esc(t)}</div>`).join('');
 
-  // ---- tiles ----
+  // ---- overview: one compact card per area ----
   const onCount=roster?agents.filter(p=>shiftHours(roster[p.name]).length).length:'–';
   const tile=(k,v,d,act)=>`<div class="tile${act?' click':''}${act&&ACT_ON[act.split(':')[0]]===act?' on':''}"${act?` role="button" tabindex="0" data-act="${esc(act)}" title="Click to show these"`:''}><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
-  $('tiles').innerHTML=
-    tile('Human agents on shift',onCount,roster?agents.length+' in the team':'','go:schedule') +
-    tile('WhatsApp from customers',wa.in.toLocaleString(),wa.chats+' customers messaged','go:whatsapp') +
-    tile('WhatsApp from Pawkit',wa.out.toLocaleString(),'replies and templates','go:whatsapp') +
-    tile('Bookings made',made.length,'created in Zoho CRM','go:bookings:made') +
-    tile('Visits',vis.length,[vs.Completed?vs.Completed+' completed':'',vs.Scheduled?vs.Scheduled+' scheduled':'',vs.Cancelled?vs.Cancelled+' cancelled':''].filter(Boolean).join(' · '),'go:bookings:visits') +
-    tile('Open complaints',openComp.length,D.comp.length+' logged in total','go:complaints:open') +
-    tile('Open tasks',(D.tasks||[]).filter(t=>!['Completed','Cancelled','Deferred'].includes(t.s)).length,'in Zoho CRM','go:tasks:open');
-
-  // ---- who is working ----
-  $('whoSub').textContent = isToday ? 'Today, '+fmtDay(day)+'. Green means on shift right now.' : fmtDay(day)+'.';
-  $('who').innerHTML='<tr><th>Name</th><th>Role</th><th>Shift</th><th>Hours</th></tr>'+CFG.people.map(p=>{
-    const code=roster?roster[p.name]:null;
-    let st='';
-    if(code){ if(isToday&&onAt(code,now.min)) st=' <span class="pill on">on now</span>'; else if(['LEAVE','SICK'].includes(code)) st=' <span class="pill warn">'+esc((CFG.shift_codes[code]||{}).label||code)+'</span>'; }
-    return `<tr><td>${esc(p.name)}${st}</td><td class="muted">${esc(p.role)}</td><td><span class="code ${esc(code||'')}">${esc(code||'–')}</span></td><td class="muted">${esc(code?(hoursText(code)||(CFG.shift_codes[code]||{}).label||code):'')}</td></tr>`;}).join('');
+  { const st=(v,k,act,tone)=>`<div class="tile ovstat" role="button" tabindex="0" data-act="${esc(act)}" title="Open"><div class="v"${tone?' style="color:var(--'+tone+')"':''}>${esc(v)}</div><div class="k">${esc(k)}</div></div>`;
+    const LK=CFG.links||{}, links=k=>(LK[k]||[]).length?'<div class="ovl">'+LK[k].map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join('')+'</div>':'';
+    const card=(key,eyebrow,title,act,stats,foot)=>`<div class="card ovc"><div class="ovh"><h2>${esc(title)}</h2><span class="eyebrow">${esc(eyebrow)}</span><a class="tile ovstat" style="padding:0" role="button" tabindex="0" data-act="${esc(act)}">Open ›</a></div><div class="ovs">${stats.join('')}</div><div class="ovf">${foot}</div>${links(key)}</div>`;
+    const m0=v=>'$'+Math.round(v||0).toLocaleString(), dayLbl=isToday?'today':fmtDay(day);
+    // workforce
+    const nowOn=roster&&isToday?agents.filter(p=>onAt(roster[p.name],now.min)):[];
+    const L=D.leave||[], offDay=L.filter(l=>l.status==='Approved'&&l.from<=day&&(l.to||l.from)>=day), pendL=L.filter(l=>l.status==='Pending');
+    const chips=CFG.people.map(p=>{ const c=roster?roster[p.name]:null, lv=['LEAVE','SICK'].includes(c), on=isToday&&c&&onAt(c,now.min), work=c&&shiftHours(c).length;
+      return `<span class="chip ${on?'on':lv?'lv':work?'':'off'}" title="${esc(c?(hoursText(c)||(CFG.shift_codes[c]||{}).label||c):'No schedule')}">${esc(p.name)}${on?' · on now':lv?' · '+esc(((CFG.shift_codes[c]||{}).label||c).toLowerCase()):work?' · '+esc(c):' · off'}</span>`; }).join('');
+    const wf=card('workforce','People','Workforce','go:schedule',[
+      st(isToday?nowOn.length:onCount,isToday?'agents on shift now':'agents on shift','go:schedule',isToday&&roster&&!nowOn.length&&now.min>=toMin('09:00')&&now.min<toMin('22:00')?'bad':''),
+      st(onCount,'agents working '+dayLbl,'go:schedule'),
+      st(offDay.length,'on approved time off','go:leave',offDay.length?'warn':''),
+      st(pendL.length,'time off to approve','go:leave',pendL.length?'warn':'')],chips);
+    // customer service
+    const W=D.wa_now, drift=W?Math.max(0,Math.round((Date.now()-new Date(D.generated).getTime())/60000)):0;
+    const wt=W?W.waiting.map(w=>({...w,mins:w.mins+drift})):[], urg=wt.filter(w=>w.urgent||w.mins>=(W?W.urgent_after:30));
+    const tOpen=(D.tasks||[]).filter(t=>!['Completed','Cancelled','Deferred'].includes(t.s)), tOver=tOpen.filter(t=>t.due&&t.due<now.day);
+    const cs=card('service','Service','Customer Service','go:whatsapp',[
+      st(W?wt.length:'–','WhatsApp chats waiting','go:whatsapp',wt.length?'warn':''),
+      st(W?urg.length:'–','need urgent care','go:whatsapp',urg.length?'bad':''),
+      st(tOpen.length,'open tasks'+(tOver.length?', '+tOver.length+' overdue':''),'go:tasks:open',tOver.length?'warn':''),
+      st(openComp.length,'open complaints','go:complaints:open',openComp.length?'bad':'')],
+      esc(wa.in.toLocaleString()+' WhatsApp messages from '+wa.chats+' customers '+dayLbl+(W&&W.median_reply_min!=null?' · typical reply '+Math.round(W.median_reply_min)+' min':'')));
+    // services and bookings
+    const nowIso=now.day+'T'+String(Math.floor(now.min/60)).padStart(2,'0')+':'+String(now.min%60).padStart(2,'0');
+    const isDone=r=>r.s==='Completed'||(r.s==='Scheduled'&&(r.e||r.d||'').slice(0,16)<nowIso);
+    const doneD=vis.filter(isDone), mon=day.slice(0,7), doneM=D.visits.filter(r=>(dayOf(r.d)||'').slice(0,7)===mon&&isDone(r));
+    const up7=D.visits.filter(r=>dayOf(r.d)>now.day&&dayOf(r.d)<=addDays(now.day,7)&&r.s!=='Cancelled');
+    const bk=card('bookings','Services','Services and Bookings','go:bookings:visits',[
+      st(made.length,'bookings made '+dayLbl,'go:bookings:made'),
+      st(vis.length,'visits '+dayLbl+(vs.Cancelled?', '+vs.Cancelled+' cancelled':''),'go:bookings:visits'),
+      st(m0(doneD.reduce((a,r)=>a+(r.amt||0),0)),'completed '+dayLbl+' ('+doneD.length+')','go:bookings:amount'),
+      st(up7.length,'visits in the next 7 days','go:bookings:upcoming')],
+      esc(MON[Number(mon.slice(5))-1]+' so far: '+m0(doneM.reduce((a,r)=>a+(r.amt||0),0))+' completed from '+doneM.length+' visits, base price'));
+    // orders and inventory
+    const O=D.orders||[], oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s)), outAmt=O.reduce((a,o)=>a+(o.out||0),0);
+    const sent=(D.inv||[]).filter(b=>b.s==='Completed'&&b.inv==='Sent'), items=D.items||[], inSt=items.filter(i=>(i.q||0)>0), low=inSt.filter(i=>i.q<=5);
+    const od=card('orders','Orders and Xero','Orders and Inventory','go:orders',[
+      st(oOpen.length,'open orders','go:orders'),
+      st(m0(outAmt),'outstanding on orders','go:orders',outAmt?'warn':''),
+      st(sent.length,'invoices sent, not paid','go:xero',sent.length?'warn':''),
+      st(low.length,'items low on stock','go:xero',low.length?'warn':'')],
+      esc(inSt.length+' of '+items.length+' Xero items in stock · '+m0(sent.reduce((a,b)=>a+(b.amt||0),0))+' in unpaid invoices, last 30 days'+(O.length?'':' · no orders in Order Processing yet')));
+    $('ov').innerHTML=wf+cs+bk+od;
+  }
 
   const days=Object.keys(D.wa).sort();
 
@@ -951,7 +1003,7 @@ function renderComplaints(){
   const st=c=>['Resolved','Closed'].includes(c.s)?`<span class="pill">${esc(c.s)}</span>`:`<span class="pill bad">${esc(c.s||'No status')}</span>`;
   $('comp').innerHTML='<tr><th>No.</th><th>Date</th><th>Provider</th><th>Category</th><th>Owner</th><th style="min-width:260px">Issue</th><th style="min-width:200px">Outcome</th><th>Status</th></tr>'+(rows.length?rows.map(c=>{
     const sm=SUM[c.n]||{}; const issue=sm.issue||short(c.desc)||'No description in Zoho'; const out=sm.outcome||short(c.res)||'No outcome recorded';
-    return `<tr><td style="white-space:nowrap">${esc(c.n)}</td><td style="white-space:nowrap">${cDay(c)?esc(fmtDay(cDay(c))):''}</td><td>${esc(c.p||'')}</td><td class="muted">${esc(c.cat||'No category')}</td><td style="white-space:nowrap">${esc(c.o||'')}</td><td title="${esc(c.desc||'')}">${esc(issue)}${sm.issue?'':' <span class="pill">from Zoho text</span>'}</td><td class="muted" title="${esc(c.res||'')}">${esc(out)}${c.rf?' <span class="pill warn">refund $'+esc(c.ra||'')+'</span>':''}</td><td>${st(c)}</td></tr>`;}).join(''):'<tr><td colspan="8" class="muted">No complaints match.</td></tr>');
+    return `<tr><td style="white-space:nowrap">${recLink('complaint',c.id,c.n)}</td><td style="white-space:nowrap">${cDay(c)?esc(fmtDay(cDay(c))):''}</td><td>${esc(c.p||'')}</td><td class="muted">${esc(c.cat||'No category')}</td><td style="white-space:nowrap">${esc(c.o||'')}</td><td title="${esc(c.desc||'')}">${esc(issue)}${sm.issue?'':' <span class="pill">from Zoho text</span>'}</td><td class="muted" title="${esc(c.res||'')}">${esc(out)}${c.rf?' <span class="pill warn">refund $'+esc(c.ra||'')+'</span>':''}</td><td>${st(c)}</td></tr>`;}).join(''):'<tr><td colspan="8" class="muted">No complaints match.</td></tr>');
 }
 
 const ST_COL={'Not Started':'#c4c4c4','In Progress':'#fdab3d','Waiting for Provider':'#a25ddc','Waiting for Customer':'#579bfc','Waiting for input/approval':'#e2445c','Completed':'#00c875','Cancelled':'#797e93','Deferred':'#797e93'};
@@ -986,7 +1038,7 @@ function renderBoard(){
     const stc=cnt(rows,t=>t.s||'Not Started');
     html+=`<div class="grp${FOLD[g.k]&&!filtered?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><span class="chev">▼</span>${esc(g.name)} <span class="n">${rows.length} task${rows.length===1?'':'s'}</span></button><div class="grp-b">`;
     html+='<table class="btbl"><colgroup><col style="width:34%"><col style="width:13%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup><tr><th style="text-align:left;padding-left:12px">Task</th><th>Owner</th><th>Status</th><th>Due date</th><th>Priority</th><th>Type</th><th>Handover</th></tr>';
-    html+=rows.length?rows.map(t=>`<tr><td class="t">${esc(t.sub||'(no subject)')}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}${t.bid||t.prov||t.wait?`<span class="tsub">${esc([t.bid?'Booking '+t.bid:'',t.prov?'Provider '+t.prov:'',t.wait?'Waiting on '+t.wait:''].filter(Boolean).join(' · '))}</span>`:''}</td>
+    html+=rows.length?rows.map(t=>`<tr><td class="t">${recLink('task',t.id,t.sub||'(no subject)')}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}${t.bid||t.prov||t.wait?`<span class="tsub">${esc([t.bid?'Booking '+t.bid:'',t.prov?'Provider '+t.prov:'',t.wait?'Waiting on '+t.wait:''].filter(Boolean).join(' · '))}</span>`:''}</td>
       <td><div class="ownc">${t.own?`<span class="av" style="background:${avCol(t.own)}" title="${esc(t.own)}">${esc(initials(t.own))}</span><span>${esc(t.own.split(' ')[0])}</span>`:'<span class="muted">–</span>'}</div></td>
       <td class="lab" style="background:${ST_COL[t.s]||'#c4c4c4'}" title="${esc(t.s||'Not Started')}">${esc(t.s==='In Progress'?'Working on it':t.s==='Waiting for input/approval'?'Needs approval':(t.s||'Not Started').replace('Waiting for ','Waiting: '))}</td>
       ${dueCell(t)}
