@@ -227,6 +227,9 @@ details.fold[open]>summary{margin-bottom:10px}
 td a[title="Open in Zoho"]{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--brand)}
 
+
+a.btnlink{display:inline-block;background:var(--brand);color:#fff;font-weight:700;text-decoration:none;border-radius:999px;padding:9px 18px}
+a.btnlink:hover{background:var(--brand2)}
 </style>
 </head>
 <body>
@@ -443,10 +446,32 @@ td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--
   <!-- LEAVE -->
   <section data-panel="leave" id="timeoff">
     <div class="tiles" id="lvTiles"></div>
-    <div class="two">
+    <p style="margin:0 4px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><a class="btnlink" href="#request">Request time off ›</a><span class="sub" style="margin:0">Opens the request form on its own page. Charlene gets an email to approve or reject it.</span></p>
+    <div class="card">
+      <h2>Waiting for approval</h2>
+      <p class="sub">Each request is emailed to Charlene with Approve and Reject buttons. Her choice shows here a few minutes after she taps, and the team member gets an email with the outcome.</p>
+      <div class="tablewrap"><table id="lvPending"></table></div>
+    </div>
+    <details class="card fold" id="lvCard">
+      <summary><h2 id="lvTitle">Time off requests</h2><span class="foldhint"></span></summary>
+      <p class="sub filternote" id="lvNote"></p>
+      <p class="sub" id="pbNote"></p>
+      <div class="tablewrap"><table id="lvAll"></table></div>
+    </details>
+    <div class="card">
+      <h2>Rest days and time off this week</h2>
+      <p class="sub">Rest days from the schedule tracker, with approved time off added.</p>
+      <div class="tablewrap"><table id="offWeek"></table></div>
+    </div>
+  </section>
+
+  <!-- REQUEST TIME OFF (its own page, opened from the Time Off page) -->
+  <section data-panel="request">
+    <p style="margin:0 4px 12px"><a href="#leave" style="color:var(--brand);font-weight:700;text-decoration:none">‹ Back to Time Off</a></p>
+    <div style="max-width:640px">
       <div class="card">
         <h2>Request time off</h2>
-        <p class="sub">This form is now the way to ask for time off (it replaces applying in Payboy). Charlene gets an email and approves or rejects it from there. Sick leave needs a medical document attached. You come back to this page after sending; the request shows here within a few minutes.</p>
+        <p class="sub">This form is now the way to ask for time off (it replaces applying in Payboy). Charlene gets an email and approves or rejects it from there. Sick leave needs a medical document attached. After sending you go back to the Time Off page; the request shows there within a few minutes.</p>
         <form id="lvForm" class="lvform" action="https://crm.zoho.com/crm/WebForm" method="POST" enctype="multipart/form-data" accept-charset="UTF-8">
           <input type="hidden" name="xnQsjsdp" value="ce0e4d8bcb6537f4b91217594d13e0966bdc3b9a7ec3779634f22cafc6a6fd28">
           <input type="hidden" name="zc_gad" value="">
@@ -468,22 +493,6 @@ td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--
           <div id="lvErr" role="alert" style="color:var(--bad);font-size:13px"></div>
         </form>
       </div>
-      <div class="card">
-        <h2>Waiting for approval</h2>
-        <p class="sub">Each request is emailed to Charlene with Approve and Reject buttons. Her choice shows here a few minutes after she taps, and the team member gets an email with the outcome.</p>
-        <div class="tablewrap"><table id="lvPending"></table></div>
-      </div>
-    </div>
-    <details class="card fold" id="lvCard">
-      <summary><h2 id="lvTitle">Time off requests</h2><span class="foldhint"></span></summary>
-      <p class="sub filternote" id="lvNote"></p>
-      <p class="sub" id="pbNote"></p>
-      <div class="tablewrap"><table id="lvAll"></table></div>
-    </details>
-    <div class="card">
-      <h2>Rest days and time off this week</h2>
-      <p class="sub">Rest days from the schedule tracker, with approved time off added.</p>
-      <div class="tablewrap"><table id="offWeek"></table></div>
     </div>
   </section>
 
@@ -659,11 +668,12 @@ function init(data){
   const GROUPS={workforce:[['schedule','Schedule'],['leave','Time Off']], service:[['whatsapp','WhatsApp Inquiries'],['tasks','Agent Tasks'],['complaints','Customer Complaints']]};
   const SUB={workforce:'schedule',service:'whatsapp'};
   const groupOf=p=>Object.keys(GROUPS).find(g=>GROUPS[g].some(x=>x[0]===p));
-  const showTab=t=>{ const g0=groupOf(t); if(g0){ SUB[g0]=t; t=g0; } else if(!GROUPS[t]&&!TABS.some(b=>b.dataset.tab===t)) t='overview';
-    const grp=GROUPS[t], panel=grp?SUB[t]:t, bar=$('wfTabs');
+  const ALONE={request:'leave'};   // a page of its own that belongs under a sub-tab
+  const showTab=t=>{ const alone=ALONE[t]?t:null; if(alone) t=ALONE[t]; const g0=groupOf(t); if(g0){ SUB[g0]=t; t=g0; } else if(!GROUPS[t]&&!TABS.some(b=>b.dataset.tab===t)) t='overview';
+    const grp=GROUPS[t], panel=alone||(grp?SUB[t]:t), bar=$('wfTabs');
     TABS.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
     bar.style.display=grp?'':'none';
-    bar.innerHTML=grp?grp.map(([p,l])=>`<button role="tab" data-wf="${p}" aria-selected="${p===panel}">${esc(l)}</button>`).join(''):'';
+    bar.innerHTML=grp?grp.map(([p,l])=>`<button role="tab" data-wf="${p}" aria-selected="${p===(alone?ALONE[alone]:panel)}">${esc(l)}</button>`).join(''):'';
     document.querySelectorAll('section[data-panel]').forEach(x=>x.classList.toggle('active',x.dataset.panel===panel));
     try{history.replaceState(null,'','#'+panel)}catch(e){} };
   $('wfTabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-wf]'); if(b) showTab(b.dataset.wf); });
