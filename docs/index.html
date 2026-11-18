@@ -382,6 +382,12 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
   <!-- WHATSAPP -->
   <section data-panel="whatsapp">
     <div class="tiles" id="waTiles"></div>
+    <div class="card" id="waTaskCard">
+      <h2 id="waTaskTitle">WhatsApp reply tasks</h2>
+      <p class="sub" id="waTaskNote">Unanswered customer chats turned into Zoho tasks by the 8:55 AM after-hours digest, split across the agents on shift. Reply in WhatsApp, then set the task to Completed in Zoho (it also closes by itself the next morning once a Pawkit reply shows in the chat). Click a row to read the messages.</p>
+      <div class="seg" role="group" aria-label="Show" id="waTaskSeg" style="margin:0 0 10px"><button data-v="open">Open</button><button data-v="done">Completed today</button></div>
+      <div class="tablewrap"><table id="waTasks"></table></div>
+    </div>
     <div id="waNowWrap">
       <h2 style="margin:18px 4px 2px">Reply status right now</h2>
       <p class="sub" id="waNowNote" style="margin:0 4px 10px"></p>
@@ -689,14 +695,33 @@ function renderWaNow(){
   $('waNowTitle').textContent=(WN_F==='urgent'?'Needs urgent care':'Waiting for a reply')+' ('+V.length+')';
   $('waNow').innerHTML=V.length?'<tr><th>'+(isP?'Provider':'Customer')+'</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map((w,i)=>`<tr class="wrow" data-wi="${i}" tabindex="0" title="Click to read the message"><td>${esc(w.name||'No name in Zoho')} <span class="readmsg">read ›</span></td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
 }
+// WhatsApp reply tasks: Zoho tasks made by the 8:55 after-hours digest (Subject "WhatsApp reply – <name>")
+let WT_V='open', WT_ROWS=[];
+function waTaskParse(t){ const L=String(t.desc||'').split('\n'), get=k=>{ const l=L.find(x=>x.startsWith(k)); return l?l.slice(k.length).trim():''; };
+  const mi=L.indexOf('Messages:'), msgs=[]; if(mi>=0) for(const l of L.slice(mi+1)){ if(!l.trim()) break; msgs.push(l); }
+  const came=get('Came in:'); return {sum:L[0]||'', came:came.replace('(URGENT)','').trim(), urgent:/URGENT/.test(came)||t.pr==='High', link:(get('Reply in WhatsApp:').match(/^https:\/\/wa\.me\/\d+$/)||[''])[0], msgs}; }
+function renderWaTasks(){
+  const all=(D.tasks||[]).filter(t=>/^WhatsApp reply/.test(t.sub||'')), today=sgNow().day;
+  const open=all.filter(t=>!['Completed','Cancelled'].includes(t.s)), done=all.filter(t=>t.s==='Completed'&&dayOf(t.cl)===today);
+  const card=$('waTaskCard'); card.style.display=all.length?'':'none'; if(!all.length) return;
+  $('waTaskSeg').querySelectorAll('button').forEach(b=>{ const on=b.dataset.v===WT_V; b.setAttribute('aria-pressed',String(on)); b.classList.toggle('on',on); b.textContent=(b.dataset.v==='open'?'Open · '+open.length:'Completed today · '+done.length); });
+  const V=(WT_V==='open'?open:done).map(t=>({...t,...waTaskParse(t)})).sort((a,b)=>(b.urgent-a.urgent)||String(a.c||'').localeCompare(String(b.c||'')));
+  WT_ROWS=V.map(t=>({name:t.who||t.sub.replace(/^WhatsApp reply – /,''),tel:t.tel,n:t.msgs.length,msgs:t.msgs.map(x=>({x})),link:t.link}));
+  $('waTaskTitle').textContent='WhatsApp reply tasks ('+open.length+' open)';
+  const st=t=>t.s==='Completed'?'<span class="pill on">completed</span>':t.urgent?'<span class="pill bad">'+esc((t.s||'').toLowerCase())+' · urgent</span>':'<span class="pill warn">'+esc((t.s||'').toLowerCase())+'</span>';
+  $('waTasks').innerHTML=V.length?'<tr><th>Customer</th><th>Number</th><th>Came in</th><th>What they want</th><th>Owner</th><th>Status</th><th>Reply</th></tr>'+V.map((t,i)=>
+    `<tr class="wrow wtrow" data-ti="${i}" tabindex="0" title="Click to read the messages"><td>${recLink('task',t.id,WT_ROWS[i].name)} <span class="readmsg">read ›</span></td><td style="white-space:nowrap">${esc(telFmt(t.tel))}</td><td style="white-space:nowrap">${esc(t.came)}</td><td>${esc(t.sum)}</td><td style="white-space:nowrap">${esc(t.own||'')}</td><td>${st(t)}</td><td style="white-space:nowrap">${t.link?`<a href="${esc(t.link)}" target="_blank" rel="noopener">WhatsApp ›</a>`:''}</td></tr>`).join(''):
+    '<tr><td class="muted">'+(WT_V==='open'?'No open WhatsApp reply tasks. All caught up.':'None completed today yet.')+'</td></tr>';
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('#waTaskSeg button'); if(b){ WT_V=b.dataset.v; renderWaTasks(); } });
 // pop-up bubble with the unanswered messages of one waiting chat
 function waPop(row){
-  const w=WN_ROWS[Number(row.dataset.wi)]; let p=$('waPop'); if(!w) return;
+  const w=row.dataset.ti!=null?WT_ROWS[Number(row.dataset.ti)]:WN_ROWS[Number(row.dataset.wi)]; let p=$('waPop'); if(!w) return;
   if(!p){ p=document.createElement('div'); p.id='waPop'; p.setAttribute('role','dialog'); document.body.appendChild(p); }
   const msgs=(w.msgs||[]);
   p.innerHTML='<div class="ph"><div><b>'+esc(w.name||'No name in Zoho')+'</b><span>'+esc(telFmt(w.tel))+'</span></div><button type="button" id="waPopX" aria-label="Close">×</button></div>'+
-    '<div class="pb">'+(msgs.length?msgs.map(m=>'<div class="bub"><div class="bx">'+esc(m.x||'(no text)').replace(/\n/g,'<br>')+'</div><div class="bt">'+esc(fmtDay(dayOf(m.t)))+', '+esc(t12(timeOf(m.t)))+'</div></div>').join(''):'<div class="muted">The message text has not arrived yet. It shows after the next update.</div>')+'</div>'+
-    '<div class="pf">'+(w.n>msgs.length?'Showing the latest '+msgs.length+' of '+w.n+' unanswered messages. ':'')+'Reply in WOZTELL.</div>';
+    '<div class="pb">'+(msgs.length?msgs.map(m=>'<div class="bub"><div class="bx">'+esc(m.x||'(no text)').replace(/\n/g,'<br>')+'</div>'+(m.t?'<div class="bt">'+esc(fmtDay(dayOf(m.t)))+', '+esc(t12(timeOf(m.t)))+'</div>':'')+'</div>').join(''):'<div class="muted">The message text has not arrived yet. It shows after the next update.</div>')+'</div>'+
+    '<div class="pf">'+(w.n>msgs.length?'Showing the latest '+msgs.length+' of '+w.n+' unanswered messages. ':'')+(w.link?'<a href="'+esc(w.link)+'" target="_blank" rel="noopener">Reply in WhatsApp ›</a>':'Reply in WOZTELL.')+'</div>';
   const r=row.getBoundingClientRect(), W=Math.min(440,window.innerWidth-24);
   p.style.width=W+'px'; p.style.display='block';
   p.style.left=Math.max(12,Math.min(r.left+window.scrollX+24,window.scrollX+window.innerWidth-W-12))+'px';
@@ -706,7 +731,7 @@ function waPop(row){
   $('waPopX').addEventListener('click',waPopClose);
 }
 function waPopClose(){ const p=$('waPop'); if(p) p.style.display='none'; }
-document.addEventListener('click',e=>{ const row=e.target.closest('tr.wrow'); if(row){ waPop(row); return; } if(!e.target.closest('#waPop')) waPopClose(); });
+document.addEventListener('click',e=>{ const row=e.target.closest('tr.wrow'); if(row&&!e.target.closest('a')){ waPop(row); return; } if(!e.target.closest('#waPop')) waPopClose(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') waPopClose(); const row=e.target.closest&&e.target.closest('tr.wrow'); if(row&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); waPop(row); } });
 document.addEventListener('click',e=>{ const b=e.target.closest('#waSeg button'); if(b){ WN_SEG=b.dataset.s; renderWaNow(); } });
 document.addEventListener('click',e=>{ const t=e.target.closest('[data-wn]'); if(!t) return; WN_F=t.dataset.wn==='all'?'waiting':t.dataset.wn; renderWaNow(); $('waNow').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); });
@@ -1029,7 +1054,7 @@ function render(day){
   $('waTiles').innerHTML=tile('From customers',wIn.toLocaleString(),wl,'wa:in')+tile('From Pawkit',wOut.toLocaleString(),wl,'wa:out')+
     tile('Customers who messaged',wsum('chats').toLocaleString(),wdays.length>1?'counted per day, '+wn:wl,'wa:chats')+tile('Daily average',Math.round(wIn/(wdays.length||1)).toLocaleString(),'from customers, '+wn,'wa:in')+
     tile('Pawkit messages per customer message',(wIn?(wOut/wIn).toFixed(2):'–'),wl,'wa:ratio');
-  renderWaNow();
+  renderWaNow(); renderWaTasks();
   const waKey=(ACT_ON.wa||'').split(':')[1], waVal=d=>{const w=D.wa[d];return waKey==='ratio'?(w.in?w.out/w.in:0):(w[waKey]||0);};
   const waDays=(waKey?days.slice().sort((a,b)=>waVal(b)-waVal(a)):days.slice().reverse()).filter(d=>cw.has(d));
   const hl=k=>waKey===k?' style="background:var(--brand-soft)"':'';

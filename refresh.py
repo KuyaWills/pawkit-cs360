@@ -391,8 +391,13 @@ def main():
               "hos": t.get("Handover_Status"), "dl": t.get("Action_Deadline"), "c": t.get("Created_Time"), "cl": t.get("Closed_Time"),
               "bid": t.get("Booking_ID"), "wait": t.get("Waiting_On"), "prov": t.get("Provider_Assigned"), "inv": t.get("Invoiced"),
               "paid": t.get("Paid"), "gcal": t.get("GCal_Updated"), "form": t.get("Form_Signed"), "comp": t.get("Compensation_Requested"),
-              "conf": t.get("Confirmed_Date_Time")}
-             for t in z.all("select Subject, Status, Priority, Due_Date, Owner, Created_By, Task_Type, Service_Type, Handover_To, Handover_Status, Action_Deadline, Created_Time, Closed_Time, Booking_ID, Waiting_On, Provider_Assigned, Invoiced, Paid, GCal_Updated, Form_Signed, Compensation_Requested, Confirmed_Date_Time from Tasks where id is not null")]
+              "conf": t.get("Confirmed_Date_Time"),
+              # WhatsApp reply tasks (made by the 8:55 after-hours digest) also carry the customer's number, name and
+              # messages, so the WhatsApp page can list them; other tasks publish no description
+              **({"tel": "".join(ch for ch in (t.get("Mobile_Number") or "") if ch.isdigit()), "who": t.get("Owner_Name"),
+                  "desc": (t.get("Description") or "")[:2000], "out": (t.get("Outcome") or "")[:200]}
+                 if (t.get("Subject") or "").startswith("WhatsApp reply") else {})}
+             for t in z.all("select Subject, Status, Priority, Due_Date, Owner, Created_By, Task_Type, Service_Type, Handover_To, Handover_Status, Action_Deadline, Created_Time, Closed_Time, Booking_ID, Waiting_On, Provider_Assigned, Invoiced, Paid, GCal_Updated, Form_Signed, Compensation_Requested, Confirmed_Date_Time, Mobile_Number, Owner_Name, Description, Outcome from Tasks where id is not null")]
 
     orders = [{"n": o.get("Name"), "d": o.get("Order_Date"), "type": o.get("Order_Type"), "s": o.get("Order_Status"), "pay": o.get("Payment_Status"),
                "ful": o.get("Fulfilment_Status"), "by": o.get("Processed_By"), "agent": nm(o.get("Assign_Agent")), "dm": o.get("Delivery_Method"),
