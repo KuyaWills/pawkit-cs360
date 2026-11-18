@@ -284,9 +284,9 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
       </div>
       <div class="card">
         <h2>Bookings made, by person</h2>
-        <p class="sub">Real bookings only, created in Zoho CRM: new enquiries, not-fulfilled and archived records are left out, and so is Kent William (admin). Cancelled bookings still count.</p>
+        <p class="sub">Real bookings only, created in Zoho CRM: new enquiries, not-fulfilled and archived records are left out, and so are admin accounts. Cancelled bookings still count.</p>
         <div class="tablewrap"><table id="byPerson"></table></div>
-        <p class="sub" style="margin:8px 0 0">"charlene oh" also covers bookings created by forms and automations that run under Charlene's login (not confirmed).</p>
+        <p class="sub" id="byPersonNote" style="margin:8px 0 0"></p>
       </div>
     </div>
     <div class="card">
@@ -430,11 +430,17 @@ async function decrypt(pw,E){
   const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(E.iv)},key,b64(E.ct));
   return JSON.parse(new TextDecoder().decode(pt));
 }
+let OPENED=false, OPENING=false;
 async function open(pw,remember){
+  if(OPENED||OPENING) return; OPENING=true;
   let D;
   try{ D=await decrypt(pw); }
-  catch(e){ $('err').textContent = e.message==='nodata' ? 'No data published yet.' : 'That passcode did not work.'; store.del(); return; }
-  PW=pw; if(remember) store.set(pw); $('gate').style.display='none'; $('app').style.display='block';
+  catch(e){
+    // the bundled snapshot may predate a passcode change: the live file is the authority
+    try{ D=await decrypt(pw,await fetchLive()); }
+    catch(e2){ OPENING=false; $('err').textContent = (e.message==='nodata'&&e2.name!=='OperationError') ? 'No data published yet.' : 'That passcode did not work.'; store.del(); return; }
+  }
+  OPENED=true; PW=pw; if(remember) store.set(pw); $('gate').style.display='none'; $('app').style.display='block';
   try{ init(D); }catch(e){ console.error(e); const m=document.createElement('div'); m.className='flag bad'; m.style.margin='16px'; m.textContent='Something went wrong showing the page: '+e.message; document.body.prepend(m); }
 }
 $('gateForm').addEventListener('submit',e=>{e.preventDefault(); if(!SECURE) return; $('err').textContent='Opening…'; open($('pw').value.trim(),$('remember').checked);});
@@ -492,20 +498,21 @@ function init(data){
     document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-new Date(D.generated).getTime()>6.5*60e3) pullLive(); }); }
 }
 function showUpdated(){
+  if(LIVE_FAILED) return;
   const g=new Date(D.generated), mins=Math.round((Date.now()-g)/60000);
   const at=D.generated.slice(8,10)+' '+MON[+D.generated.slice(5,7)-1]+', '+t12(D.generated.slice(11,16));
   const el=$('updated'); el.textContent=(mins<=12?'● Live · ':'')+'Updated '+at+' SGT'+(mins>12?' ('+(mins<120?mins+' min':Math.round(mins/60)+' h')+' ago)':'');
   el.style.color=mins<=12?'var(--good)':mins>60?'var(--warn)':'';
 }
-let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null;
+let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null, LIVE_FAILED=false;
+async function getJSON(url,opts){
+  const c=new AbortController(), t=setTimeout(()=>c.abort(),30000);
+  try{ const r=await fetch(url,{...opts,signal:c.signal}); if(!r.ok) throw new Error('live data HTTP '+r.status); return await r.json(); }
+  finally{ clearTimeout(t); }
+}
 async function fetchLive(){
-  try{
-    const r=await fetch(LIVE_API,{headers:{Accept:'application/vnd.github.raw'},cache:'no-store'});
-    if(r.ok) return await r.json();
-  }catch(e){}
-  const r=await fetch(LIVE_URL+'?t='+Date.now(),{cache:'no-store'});
-  if(!r.ok) throw new Error('live data HTTP '+r.status);
-  return await r.json();
+  try{ return await getJSON(LIVE_API,{headers:{Accept:'application/vnd.github.raw'},cache:'no-store'}); }catch(e){}
+  return await getJSON(LIVE_URL+'?t='+Date.now(),{cache:'no-store'});
 }
 // The Mac publishes every 5 minutes. Check again shortly after the next publish is due;
 // if it is late (Mac asleep or offline), retry each minute a few times, then every 5 minutes.
@@ -520,27 +527,33 @@ async function pullLive(){
   try{ await pullLiveOnce(); } finally{ PULLING=false; scheduleNext(); }
 }
 async function pullLiveOnce(){
-  let N;
-  try{ N=await decrypt(PW,await fetchLive()); }
-  catch(e){ console.warn('live update skipped',e); MISSES++; return; }
+  let E,N;
+  try{ E=await fetchLive(); }catch(e){ console.warn('live update skipped',e); MISSES++; return; }
+  try{ N=await decrypt(PW,E); }
+  catch(e){
+    MISSES++;
+    // fetched fine but will not open with this passcode: the passcode was changed. Ask for the new one
+    // (only when the page's data is already stale, so a cached old copy cannot bounce people out).
+    if(e&&e.name==='OperationError'&&Date.now()-new Date(D.generated).getTime()>12*60e3){ store.del(); location.reload(); }
+    return;
+  }
   if(N.generated<=D.generated){ MISSES++; return; }
-  MISSES=0;
   const prevD=D, prevC=CFG, sel=$('day'), cur=sel.value, prevHTML=sel.innerHTML, today=sgNow().day;
   try{
     D=N; CFG=N.config;
     const days=Object.keys(D.wa).sort();
     sel.innerHTML=days.slice().reverse().map(d=>`<option value="${d}">${fmtDay(d)}${d===today?' (today)':''}</option>`).join('');
     sel.value=(!USER_PICKED||!days.includes(cur))?(days.includes(today)?today:days[days.length-1]):cur;
-    render(sel.value); showUpdated();
+    render(sel.value); MISSES=0; LIVE_FAILED=false; showUpdated();
   }catch(e){
-    console.error('live update failed',e);
+    console.error('live update failed',e); MISSES++; LIVE_FAILED=true;
     D=prevD; CFG=prevC; sel.innerHTML=prevHTML; sel.value=cur;
     try{ render(cur); }catch(_){}
     const el=$('updated'); el.textContent='Live update failed, showing '+D.generated.slice(11,16)+' data'; el.style.color='var(--bad)';
   }
 }
 
-function shiftHours(code){const c=CFG.shift_codes[code];return c?c.hours:[];}
+function shiftHours(code){const c=(CFG.shift_codes||{})[code];return (c&&c.hours)||[];}
 function hoursText(code){const h=shiftHours(code);return h.length?h.map(([a,b])=>t12(a)+'–'+t12(b)).join(', '):'';}
 function onAt(code,min){return shiftHours(code).some(([a,b])=>min>=toMin(a)&&min<toMin(b));}
 
@@ -560,7 +573,7 @@ function render(day){
     const on=agents.filter(p=>shiftHours(roster[p.name]).length);
     if(on.length<=2) flags.push(['warn',`Only ${on.length} human agent${on.length===1?'':'s'} on shift on ${fmtDay(day)}.`]);
     const dow=dparts(day).getUTCDay();
-    if(dow>=1&&dow<=5&&!agents.some(p=>onAt(roster[p.name],toMin('08:00')))) flags.push(['warn','Nobody starts at 8am, before the 9:30am Silver Sky run.']);
+    if(dow>=1&&dow<=5&&!agents.some(p=>onAt(roster[p.name],toMin('08:00')))) flags.push(['warn',CFG.early_start_note||'Nobody starts at 8am.']);
     const late=agents.some(p=>onAt(roster[p.name],toMin('21:30')));
     if(!late) flags.push(['warn','No human agent on shift at 9:30pm.']);
     if(isToday){
@@ -697,7 +710,7 @@ function render(day){
   const items=D.items||[], inStock=items.filter(i=>(i.q||0)>0), low=inStock.filter(i=>i.q<=5);
   const sync=items.reduce((m,i)=>i.sync&&i.sync>m?i.sync:m,'');
   $('xTiles').innerHTML=tile('Completed visits, 30 days',done30.length,'with an invoice status')+tile('Invoice paid',invC.Paid||0,money(invAmt.Paid||0))+tile('Invoice sent, not paid',invC.Sent||0,money(invAmt.Sent||0)+' at base price')+tile('Stock items in stock',inStock.length,items.length+' Xero items')+tile('Low stock',low.length,'1 to 5 left');
-  $('xInv').innerHTML='<tr><th>Invoice status</th><th class="num">Visits</th><th class="num">Base price</th></tr>'+Object.keys(invC).sort((a,b)=>invC[b]-invC[a]).map(k=>`<tr><td>${stPill(k==='Paid'?'Completed':k==='Sent'?'Waiting':k).replace(/>[^<]*<\/span>/,'>'+esc(k)+'</span>')}</td><td class="num">${invC[k]}</td><td class="num">${money(invAmt[k])}</td></tr>`).join('')+
+  $('xInv').innerHTML='<tr><th>Invoice status</th><th class="num">Visits</th><th class="num">Base price</th></tr>'+Object.keys(invC).sort((a,b)=>invC[b]-invC[a]).map(k=>`<tr><td>${stPill(k==='Paid'?'Completed':k==='Sent'?'Waiting':k).replace(/>[^<]*<\/span>/,()=>'>'+esc(k)+'</span>')}</td><td class="num">${invC[k]}</td><td class="num">${money(invAmt[k])}</td></tr>`).join('')+
     `<tr><td colspan="3" class="muted" style="font-size:12.5px">"Sent" can also mean paid in Xero but not yet synced back to Zoho CRM. Check before chasing anyone.</td></tr>`;
   $('xPay').innerHTML='<tr><th>Payment method</th><th class="num">Visits</th><th class="num">Marked paid</th></tr>'+Object.keys(payC).sort((a,b)=>payC[b]-payC[a]).map(k=>`<tr><td>${esc(k)}</td><td class="num">${payC[k]}</td><td class="num">${payPaid[k]||0}</td></tr>`).join('');
   $('xStockSub').textContent='Xero Items in Zoho CRM, last synced '+(sync?fmtDay(dayOf(sync))+' '+t12(timeOf(sync)):'(unknown)')+'. Items at zero include services that carry no stock.';
@@ -805,13 +818,14 @@ function renderBookings(day){
   const nDays=Math.max(1,(isDay?1:cdays.length));
   const upcoming=D.visits.filter(r=>dayOf(r.d)>now.day && r.s!=='Cancelled');
   const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
-  const NOT_REAL=['New enquiry','Not fulfilled','Archive'], HIDE_BY=['Kent William'];
+  const NOT_REAL=['New enquiry','Not fulfilled','Archive'], HIDE_BY=CFG.hide_by||[];
   const real=r=>!NOT_REAL.includes(r.s)&&!HIDE_BY.includes(r.by);
+  $('byPersonNote').textContent=CFG.by_person_note||'';
   const madeR=made.filter(real);
   $('bkTiles').innerHTML=tile('made','Bookings made',made.length,isDay?R.label:'avg '+(made.length/nDays).toFixed(1)+' a day')+
     tile('real','Real bookings',madeR.length,'excl. enquiries and not fulfilled')+
     tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',vs.Completed||0,'visits')+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
-    tile('upcoming','Upcoming visits',upcoming.length,'from tomorrow, not cancelled');
+    tile('upcoming','Upcoming visits',upcoming.length,'tomorrow to '+fmtDay(visUntil)+', not cancelled');
   $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   // month calendar
   const calCard=$('bkCalCard');
@@ -853,7 +867,7 @@ function renderBookings(day){
     cancelled:{t:'Cancelled visits and no-shows',rows:vis.filter(r=>r.s==='Cancelled'||r.s==='No show'),kind:'visit'},
     upcoming:{t:'Upcoming visits',rows:upcoming,kind:'visit',all:true}};
   const V=VIEWS[BK_VIEW]||VIEWS.visits;
-  $('visitsTitle').textContent=V.t+', '+(V.all?'from tomorrow':R.label)+' ('+V.rows.length+')';
+  $('visitsTitle').textContent=V.t+', '+(V.all?'tomorrow to '+fmtDay(visUntil):R.label)+' ('+V.rows.length+')';
   $('visitsSub').textContent=(V.kind==='made'?'Bookings by the time they were created in Zoho CRM.':'Bookings by visit date and time in Zoho CRM.')+' Click a tile above to change this list. No customer details are shown.';
   const multi=!isDay||V.all;
   if(V.kind==='made'){

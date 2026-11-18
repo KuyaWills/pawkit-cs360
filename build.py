@@ -19,11 +19,26 @@ SGT = timezone(timedelta(hours=8))
 
 def main():
     raw = json.load(open(sys.argv[1]))
-    # config (roster, complaint summaries) is private: it lives outside the public repo
-    cfg = json.load(open(os.path.expanduser("~/.config/pawkit-cs360/config.json")))
-    bad = sorted({(d, n, c) for d, r in cfg.get("roster", {}).items() for n, c in r.items() if c and c not in cfg.get("shift_codes", {})})
-    if bad:
-        sys.exit("unknown shift codes in config.json roster: %r" % bad)
+    # config (roster, complaint summaries) is private: it lives outside the public repo.
+    # A typo in it must never stop the data: fall back to the last copy that loaded, and only warn on unknown codes.
+    cfg_path = os.path.expanduser("~/.config/pawkit-cs360/config.json")
+    last_good = cfg_path + ".last-good"
+    try:
+        cfg = json.load(open(cfg_path))
+        codes = cfg["shift_codes"]
+        for d, r in cfg["roster"].items():
+            for n, c in list(r.items()):
+                if isinstance(c, str) and c.strip() in codes:
+                    r[n] = c.strip()
+                elif c:
+                    print("WARNING unknown shift code %r for %s on %s (shown as typed, counted as not on shift)" % (c, n, d))
+        fd = os.open(last_good + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(cfg, f)
+        os.replace(last_good + ".tmp", last_good)
+    except (OSError, ValueError, KeyError, AttributeError) as e:
+        print("WARNING config.json could not be used (%s: %s); using the last good copy" % (type(e).__name__, e))
+        cfg = json.load(open(last_good))
     pw = open(os.path.expanduser("~/.config/pawkit-cs360/passcode")).read().strip()
     payload = {
         "generated": raw.get("generated") or datetime.now(SGT).isoformat(timespec="minutes"),
