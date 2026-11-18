@@ -51,6 +51,8 @@ select,button,input{font:inherit;color:var(--ink);background:var(--surface);bord
 button{cursor:pointer}
 button.primary{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:700}
 button.primary:hover{background:var(--brand2);border-color:var(--brand2)}
+button:disabled,input:disabled{opacity:.5;cursor:default}
+#err a{color:var(--brand);font-weight:700}
 :root[data-theme="dark"] button.primary{color:#0b0b0b}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 1px 3px rgba(0,60,55,.04);padding:16px;margin-bottom:14px}
 .card h2{font-size:16px;margin:0 0 4px;color:var(--head);font-weight:700}
@@ -435,9 +437,22 @@ async function open(pw,remember){
   PW=pw; if(remember) store.set(pw); $('gate').style.display='none'; $('app').style.display='block';
   try{ init(D); }catch(e){ console.error(e); const m=document.createElement('div'); m.className='flag bad'; m.style.margin='16px'; m.textContent='Something went wrong showing the page: '+e.message; document.body.prepend(m); }
 }
-$('gateForm').addEventListener('submit',e=>{e.preventDefault(); $('err').textContent='Opening…'; open($('pw').value.trim(),$('remember').checked);});
+$('gateForm').addEventListener('submit',e=>{e.preventDefault(); if(!SECURE) return; $('err').textContent='Opening…'; open($('pw').value.trim(),$('remember').checked);});
 $('lock').addEventListener('click',()=>{store.del(); location.reload();});
-const saved=store.get(); if(saved) open(saved,true);
+// Decryption needs a secure (https) page. On plain http, e.g. while a new address is still
+// waiting for its certificate, say so and move to https by itself as soon as it works.
+const SECURE=!!(window.isSecureContext && window.crypto && crypto.subtle);
+function insecureNotice(){
+  const httpsUrl='https://'+location.host+location.pathname+location.search+location.hash;
+  $('pw').disabled=true; $('gateForm').querySelector('button').disabled=true;
+  const el=$('err'); el.style.color='var(--warn)';
+  el.innerHTML='This page only opens on its secure address. <a href="'+esc(httpsUrl)+'">Open the secure page</a>. If that shows a warning, the secure address is still being set up. This page will switch over by itself when it is ready.';
+  const probe=new URL('data.js',httpsUrl).href;
+  const tryHttps=()=>fetch(probe,{mode:'no-cors',cache:'no-store'}).then(()=>location.replace(httpsUrl)).catch(()=>setTimeout(tryHttps,30000));
+  if(location.protocol==='http:') tryHttps();
+}
+if(!SECURE) insecureNotice();
+else { const saved=store.get(); if(saved) open(saved,true); }
 
 // ---------- helpers ----------
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];

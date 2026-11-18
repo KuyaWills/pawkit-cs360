@@ -9,3 +9,5 @@ else
   { python3 refresh.py && python3 build.py raw/crm.json --no-bundle && ./publish.sh && echo "$(date '+%Y-%m-%d %H:%M') published"; } >> logs/refresh.log 2>&1
 fi
 tail -n 400 logs/refresh.log > logs/.r && mv logs/.r logs/refresh.log
+# when DNS for the custom domain appears, switch the site to it (never affects the data refresh)
+./domain_watch.sh >> logs/domain.log 2>&1 || true

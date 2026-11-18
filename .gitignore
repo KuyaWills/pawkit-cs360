@@ -4,3 +4,5 @@ logs/
 .publish/
 .DS_Store
 config.json
+.domain-state
+.domain-state.note
