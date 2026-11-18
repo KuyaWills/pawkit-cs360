@@ -647,8 +647,8 @@ let DECIDE=null;
 const recLink=(kind,id,text)=>{ const b=((CFG&&CFG.links||{}).record||{})[kind]; return b&&id?`<a href="${esc(b+encodeURIComponent(id))}" target="_blank" rel="noopener" title="Open in Zoho">${esc(text)}</a>`:esc(text); };
 let WN_F='waiting', WN_SEG='cust', WN_ROWS=[];
 // ---- date filter for the Customer Service pages (each page remembers its own range) ----
-const CSF={whatsapp:{r:'day',d:null},tasks:{r:'all',d:null},complaints:{r:'all',d:null}};
-const CS_BY={whatsapp:'by message date',tasks:'tasks by due date',complaints:'by complaint date'};
+const CSF={whatsapp:{r:'day',d:null},tasks:{r:'all',d:null},complaints:{r:'all',d:null},orders:{r:'all',d:null},xero:{r:'all',d:null}};
+const CS_BY={whatsapp:'by message date',tasks:'tasks by due date',complaints:'by complaint date',orders:'by order date',xero:'invoices by visit date (stock is not dated)'};
 let CUR_PANEL='overview';
 function rangeOf(r,day){ const d=dparts(day);
   if(r==='week'){ const dow=(d.getUTCDay()+6)%7, from=addDays(day,-dow); return {from,to:addDays(from,6),label:'Week of '+fmtDay(from)}; }
@@ -662,8 +662,8 @@ function csBarSync(){ const on=!!CSF[CUR_PANEL]; $('csBar').style.display=on?'':
   $('csRange').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===f.r)));
   $('csDate').value=R.day; ['csDate','csPrev','csNext'].forEach(i=>$(i).disabled=R.all);
   $('csRangeLabel').textContent=R.label+' · '+CS_BY[CUR_PANEL]; }
-function csSet(patch){ Object.assign(CSF[CUR_PANEL],patch); csBarSync(); render($('day').value); }
-function csStep(dir){ const f=CSF[CUR_PANEL], a=csR(CUR_PANEL).day; let d;
+function csSet(patch){ if(!CSF[CUR_PANEL]) return; Object.assign(CSF[CUR_PANEL],patch); csBarSync(); render($('day').value); }
+function csStep(dir){ if(!CSF[CUR_PANEL]) return; const f=CSF[CUR_PANEL], a=csR(CUR_PANEL).day; let d;
   if(f.r==='month'){ const x=dparts(a); x.setUTCDate(1); x.setUTCMonth(x.getUTCMonth()+dir); d=x.toISOString().slice(0,10); } else d=addDays(a,dir*(f.r==='week'?7:1));
   csSet({d}); }
 document.addEventListener('click',e=>{ const b=e.target.closest('#csRange button'); if(b) csSet({r:b.dataset.r}); else if(e.target.id==='csPrev') csStep(-1); else if(e.target.id==='csNext') csStep(1); else if(e.target.id==='csToday') csSet({d:sgNow().day,r:CSF[CUR_PANEL].r==='all'?'day':CSF[CUR_PANEL].r}); });
@@ -1035,21 +1035,21 @@ function render(day){
   renderBoard();
 
   // ---- orders ----
-  const O=D.orders||[]; const oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s));
+  const oR=csR('orders'), O=(D.orders||[]).filter(o=>oR.all||oR.has(dayOf(o.d||o.c))); const oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s));
   const money=v=>v==null?'':'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
   const unpaid=o=>['Not Invoiced','Invoiced','Partially Paid','Overdue'].includes(o.pay);
-  $('opTiles').innerHTML=tile('Orders',O.length,'in Order Processing','op:all')+tile('Open',oOpen.length,'not delivered, cancelled or returned','op:open')+tile('Unpaid',O.filter(unpaid).length,'by payment status','op:unpaid')+tile('Outstanding',money(O.reduce((a,o)=>a+(o.out||0),0))||'$0','outstanding amount','op:out');
+  $('opTiles').innerHTML=tile('Orders',O.length,oR.all?'in Order Processing':oR.label,'op:all')+tile('Open',oOpen.length,'not delivered, cancelled or returned','op:open')+tile('Unpaid',O.filter(unpaid).length,'by payment status','op:unpaid')+tile('Outstanding',money(O.reduce((a,o)=>a+(o.out||0),0))||'$0','outstanding amount','op:out');
   const opKey=(ACT_ON.op||'op:all').split(':')[1], OV=O.filter(o=>opKey==='open'?oOpen.includes(o):opKey==='unpaid'?unpaid(o):opKey==='out'?(o.out||0)>0:true);
   $('opNote').innerHTML=opKey==='all'?'':esc(({open:'Open orders only',unpaid:'Unpaid orders only',out:'Orders with an outstanding amount only'})[opKey])+' · <a href="#orders" data-clear="op">show all</a>';
   $('opTable').innerHTML=O.length?'<tr><th>Order</th><th>Date</th><th>Type</th><th>Status</th><th>Fulfilment</th><th>Payment</th><th>Delivery</th><th class="num">Total</th><th>Processed by</th></tr>'+OV.slice().sort((a,b)=>(b.d||b.c||'').localeCompare(a.d||a.c||'')).map(o=>`<tr><td>${esc(o.n)}</td><td>${esc(dayOf(o.d||o.c)?fmtDay(dayOf(o.d||o.c)):'')}</td><td>${esc(o.type||'')}</td><td>${stPill(o.s)}</td><td class="muted">${esc(o.ful||'')}</td><td>${esc(o.pay||'')}</td><td class="muted">${esc([o.dm,o.urg].filter(Boolean).join(' · '))}</td><td class="num">${money(o.tot)}</td><td>${esc(o.by||o.agent||'')}</td></tr>`).join(''):'<tr><td class="muted">No orders in the Order Processing module yet. This tab fills in as soon as orders are logged there.</td></tr>';
 
   // ---- xero: invoices ----
-  const done30=(D.inv||[]).filter(b=>b.s==='Completed');
+  const xR=csR('xero'), done30=(D.inv||[]).filter(b=>b.s==='Completed'&&(xR.all||xR.has(dayOf(b.d))));
   const invC=cnt(done30,b=>b.inv||'No status'), invAmt={}; done30.forEach(b=>{const k=b.inv||'No status';invAmt[k]=(invAmt[k]||0)+(b.amt||0);});
   const payC=cnt(done30,b=>b.pm||'Not set'), payPaid=cnt(done30.filter(b=>b.inv==='Paid'),b=>b.pm||'Not set');
   const items=D.items||[], inStock=items.filter(i=>(i.q||0)>0), low=inStock.filter(i=>i.q<=5);
   const sync=items.reduce((m,i)=>i.sync&&i.sync>m?i.sync:m,'');
-  $('xTiles').innerHTML=tile('Completed visits, 30 days',done30.length,'with an invoice status','xi:all')+tile('Invoice paid',invC.Paid||0,money(invAmt.Paid||0),'xi:Paid')+tile('Invoice sent, not paid',invC.Sent||0,money(invAmt.Sent||0)+' at base price','xi:Sent')+tile('Stock items in stock',inStock.length,items.length+' Xero items','xs:in')+tile('Low stock',low.length,'1 to 5 left','xs:low');
+  $('xTiles').innerHTML=tile(xR.all?'Completed visits, 30 days':'Completed visits',done30.length,xR.all?'with an invoice status':xR.label,'xi:all')+tile('Invoice paid',invC.Paid||0,money(invAmt.Paid||0),'xi:Paid')+tile('Invoice sent, not paid',invC.Sent||0,money(invAmt.Sent||0)+' at base price','xi:Sent')+tile('Stock items in stock',inStock.length,items.length+' Xero items','xs:in')+tile('Low stock',low.length,'1 to 5 left','xs:low');
   const xiKey=(ACT_ON.xi||'').split(':')[1];
   $('xListCard').style.display=xiKey?'':'none';
   if(xiKey){ const L=done30.filter(b=>xiKey==='all'||(b.inv||'No status')===xiKey).sort((a,b)=>(b.d||'').localeCompare(a.d||''));
