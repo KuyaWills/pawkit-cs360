@@ -495,7 +495,7 @@ function init(data){
   showUpdated();
   try{ render(sel.value); }
   finally{ pullLive(); setInterval(showUpdated,60*1000);
-    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-new Date(D.generated).getTime()>6.5*60e3) pullLive(); }); }
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-new Date(D.generated).getTime()>((D.refresh_seconds||300)+90)*1e3) pullLive(); }); }
 }
 function showUpdated(){
   if(LIVE_FAILED) return;
@@ -514,11 +514,11 @@ async function fetchLive(){
   try{ return await getJSON(LIVE_API,{headers:{Accept:'application/vnd.github.raw'},cache:'no-store'}); }catch(e){}
   return await getJSON(LIVE_URL+'?t='+Date.now(),{cache:'no-store'});
 }
-// The Mac publishes every 5 minutes. Check again shortly after the next publish is due;
+// The Mac publishes every D.refresh_seconds (2 minutes). Check again shortly after the next publish is due;
 // if it is late (Mac asleep or offline), retry each minute a few times, then every 5 minutes.
 function scheduleNext(){
   clearTimeout(POLL_TIMER);
-  let wait=new Date(D.generated).getTime()+390e3-Date.now();
+  let wait=new Date(D.generated).getTime()+((D.refresh_seconds||300)+90)*1e3-Date.now();
   if(!(wait>=15e3)) wait = MISSES<4 ? 60e3 : 5*60e3;
   POLL_TIMER=setTimeout(pullLive,Math.min(wait,7*60e3));
 }
