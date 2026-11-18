@@ -1095,14 +1095,15 @@ function renderBookings(day){
   const nowIso=now.day+'T'+String(Math.floor(now.min/60)).padStart(2,'0')+':'+String(now.min%60).padStart(2,'0');
   const isDone=r=>r.s==='Completed'||(r.s==='Scheduled'&&(r.e||r.d||'').slice(0,16)<nowIso);
   const doneV=vis.filter(isDone), lagN=doneV.filter(r=>r.s!=='Completed').length, lagTxt=lagN?', incl. '+lagN+' past, still Scheduled in Zoho':'', doneAmt=doneV.reduce((a,r)=>a+(r.amt||0),0);
+  const repAmt=doneV.filter(r=>r.rep).reduce((a,r)=>a+(r.amt||0),0);
   const toCome=vis.filter(r=>r.s==='Scheduled'&&!isDone(r));
   const doneOwners=new Set(doneV.map(r=>r.o).filter(Boolean)), repOwners=new Set(doneV.filter(r=>r.rep).map(r=>r.o).filter(Boolean));
   $('bkTiles').innerHTML=tile('made','Bookings made',made.length,isDay?R.label:'avg '+(made.length/nDays).toFixed(1)+' a day')+
     tile('real','Real bookings',madeR.length,'excl. enquiries and not fulfilled')+
     tile('visits','Visits',vis.length,R.label)+tile('completed','Completed',doneV.length,'visits'+lagTxt)+tile('cancelled','Cancelled',(vs.Cancelled||0)+(vs['No show']||0),'incl. no-shows')+
     tile('amount','Completed amount',money0(doneAmt),doneV.length+' completed visits, base price'+lagTxt+(toCome.length?'. '+money0(toCome.reduce((a,r)=>a+(r.amt||0),0))+' still to come ('+toCome.length+' scheduled)':''))+
-    tile('repeat','Repeat customers',repOwners.size,doneOwners.size?Math.round(repOwners.size/doneOwners.size*100)+'% of '+doneOwners.size+' customers served':'of customers served')+
-    tile('upcoming','Upcoming visits',upcoming.length,'tomorrow to '+fmtDay(visUntil)+', not cancelled');
+    tile('repeat','Repeat customers',repOwners.size,(doneOwners.size?Math.round(repOwners.size/doneOwners.size*100)+'% of '+doneOwners.size+' customers served':'of customers served')+(doneAmt?'. '+money0(repAmt)+', '+Math.round(repAmt/doneAmt*100)+'% of the completed amount':''))+
+    tile('upcoming','Upcoming visits',upcoming.length,'tomorrow to '+fmtDay(visUntil)+', not cancelled. '+money0(upcoming.reduce((a,r)=>a+(r.amt||0),0))+' expected, base price');
   $('bkTiles').querySelectorAll('.tile.click').forEach(t=>{const go=()=>{BK_VIEW=t.dataset.v; renderBookings(day); $('visits').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});}; t.addEventListener('click',go); t.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
   // month calendar
   const calCard=$('bkCalCard');
@@ -1153,8 +1154,9 @@ function renderBookings(day){
       V.rows.slice().sort((a,b)=>(a.c||'').localeCompare(b.c||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.c,multi)}</td><td>${esc(r.cat||'No service set')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${esc(r.by||'')}</td><td style="white-space:nowrap" class="muted">${r.d?when(r.d,true):'Not set'}</td><td>${esc(r.p||'')}</td></tr>`).join('')
       :'<tr><td class="muted">Nothing in this range.</td></tr>';
   } else {
-    $('visits').innerHTML=V.rows.length?'<tr><th>'+(multi?'Date and time':'Time')+'</th><th>Service</th><th>Area</th><th>Provider</th><th>Status</th><th>Customer</th><th class="num">Amount</th><th>Invoice</th></tr>'+
-      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${r.rep?'<span class="pill brand">repeat</span>':r.o?'<span class="pill">new</span>':''}</td><td class="num">${r.amt!=null?'$'+esc(r.amt):''}</td><td class="muted">${esc(r.inv||'')}</td></tr>`).join('')+(V.rows.length?`<tr><th colspan="6">Total</th><th class="num">${money0(V.rows.reduce((a,r)=>a+(r.amt||0),0))}</th><th></th></tr>`:'')
+    const hasWhy=V.rows.some(r=>!['Scheduled','Completed'].includes(r.s));   // cancelled, rescheduled and similar rows get a reason column
+    $('visits').innerHTML=V.rows.length?'<tr><th>'+(multi?'Date and time':'Time')+'</th><th>Service</th><th>Area</th><th>Provider</th><th>Status</th><th>Customer</th><th class="num">Amount</th><th>Invoice</th>'+(hasWhy?'<th style="min-width:220px">Reason and notes</th>':'')+'</tr>'+
+      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${r.rep?'<span class="pill brand">repeat</span>':r.o?'<span class="pill">new</span>':''}</td><td class="num">${r.amt!=null?'$'+esc(r.amt):''}</td><td class="muted">${esc(r.inv||'')}</td>${hasWhy?`<td>${r.why?'<span class="pill warn">'+esc(r.why)+'</span> ':''}${esc(r.whyn||'')}${!r.why&&!r.whyn&&!['Scheduled','Completed'].includes(r.s)?'<span class="muted">No reason recorded in Zoho</span>':''}</td>`:''}</tr>`).join('')+(V.rows.length?`<tr><th colspan="6">Total</th><th class="num">${money0(V.rows.reduce((a,r)=>a+(r.amt||0),0))}</th><th${hasWhy?' colspan="2"':''}></th></tr>`:'')
       :'<tr><td class="muted">Nothing in this range.</td></tr>';
   }
   // by service

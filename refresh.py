@@ -280,11 +280,26 @@ def main():
 
     hist = customer_history(z, today)
     first = hist["first"]
-    F = "Created_Time, Date_Time, End_Time, Booking_Status, Service_Category, Created_By, Partner_Name.Name, Area, Invoice_Status, Payment_Method, Base_Price, Pet_Owner"
+    F = "Created_Time, Date_Time, End_Time, Booking_Status, Service_Category, Created_By, Partner_Name.Name, Area, Invoice_Status, Payment_Method, Base_Price, Pet_Owner, Reason_Not_Fulfilled, Reason, Reason_Note, Note"
 
     def owner(r):
         o = r.get("Pet_Owner")
         return o.get("id") if isinstance(o, dict) else None
+
+    def why(r):  # why a booking did not go ahead: Zoho's closure reason plus the staff's reason text and internal note
+        if r.get("Booking_Status") in ("Scheduled", "Completed"):
+            return {}
+        seen, notes = set(), []
+        for k in ("Reason", "Reason_Note", "Note"):
+            t = " ".join((r.get(k) or "").split())
+            if t and t.lower() not in seen:
+                seen.add(t.lower()); notes.append(t)
+        out = {}
+        if r.get("Reason_Not_Fulfilled"):
+            out["why"] = r["Reason_Not_Fulfilled"]
+        if notes:
+            out["whyn"] = " · ".join(notes)[:300]
+        return out
 
     def repeat(r):  # the customer had a completed visit before this booking's date
         f = first.get(owner(r) or "")
@@ -293,7 +308,7 @@ def main():
     slim = lambda r: {"c": r.get("Created_Time"), "d": r.get("Date_Time"), "e": r.get("End_Time"), "s": r.get("Booking_Status"),
                       "cat": r.get("Service_Category"), "src": None, "by": nm(r.get("Created_By")), "p": r.get("Partner_Name.Name"),
                       "a": r.get("Area"), "inv": r.get("Invoice_Status"), "pay": r.get("Payment_Method"),
-                      "amt": r.get("Base_Price"), "o": (owner(r) or "")[-7:] or None, "rep": repeat(r)}
+                      "amt": r.get("Base_Price"), "o": (owner(r) or "")[-7:] or None, "rep": repeat(r), **why(r)}
     start31 = (today - timedelta(days=13)).replace(day=1).isoformat()  # month of the oldest pickable day
     created = [slim(r) for r in z.all("select %s from Booking where Created_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end14))]
     visits = [slim(r) for r in z.all("select %s from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end_vis))]
