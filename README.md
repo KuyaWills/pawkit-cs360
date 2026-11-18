@@ -22,3 +22,4 @@ Anything already published under an old passcode stays readable with that passco
 - The page shows a confirm step; confirming posts the Zoho webform "CS360 Time Off Decision" into the module `Time_Off_Decisions` (administrators only).
 - `refresh.py` applies the latest decision to a request that Zoho still shows as Pending, but only when the decision carries the approval key. The key lives in the private config as `_approval_key` (keys starting with `_` are never published) and in the Zoho email template. To change it, change both.
 - A status set by hand in Zoho (Approved, Rejected, Cancelled) always wins over an email decision.
+- Sick leave needs a medical document: the request form uploads it through the webform's File Upload field (`theFile`), and it lands under Attachments on the request in Zoho. `refresh.py` only publishes whether a file is attached, never the file.

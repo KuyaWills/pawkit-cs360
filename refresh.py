@@ -225,6 +225,28 @@ def main():
               "asked": r.get("Created_Time"), "by": nm(r.get("Modified_By")) if (r.get("Leave_Status") in ("Approved", "Rejected")) else None,
               "when": r.get("Modified_Time")} for r in lv]
 
+    # sick leave needs a medical document: is a file attached to the request? (a found file is remembered)
+    if leave:
+        dpath = os.path.join(HERE, "raw", "doc_cache.json")
+        try:
+            with open(dpath) as f:
+                docs = json.load(f)
+        except (OSError, ValueError):
+            docs = {}
+        for l in leave:
+            if l["type"] != "Sick leave":
+                continue
+            if not docs.get(l["id"]):
+                try:
+                    j = z.req("/crm/v5/Leave_Requests/%s/Attachments?fields=id" % l["id"])
+                    docs[l["id"]] = bool(j.get("data"))
+                except SystemExit as e:
+                    print("WARNING attachments could not be read:", str(e)[:120])
+                    docs[l["id"]] = None
+            l["doc"] = docs.get(l["id"])
+        with open(dpath, "w") as f:
+            json.dump({k: v for k, v in docs.items() if v}, f)
+
     # decisions made from the buttons in the approver's email (module Time_Off_Decisions, written by the page's
     # confirm step). A decision counts only with the private approval key, and only while Zoho still says Pending.
     if leave:
