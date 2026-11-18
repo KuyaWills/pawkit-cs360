@@ -80,17 +80,27 @@ def whatsapp_status(z, now):
     """Looks at the last 48 hours of one-to-one WhatsApp messages and groups them by customer. A conversation is
     'waiting' when the customer's latest message has no Pawkit message after it (a bare thanks/ok/emoji does not count
     as needing a reply). It is 'urgent' when it has waited URGENT_AFTER_MIN minutes or contains an urgent word.
-    No message text is published: only the customer's name, their number and the times."""
+    For waiting chats the unanswered messages themselves are published too (inside the encrypted data), so the
+    team can read them from the page; answered chats publish no text."""
     start = (now - timedelta(hours=48)).isoformat(timespec="seconds")
-    q = ("select %sFrom, %sTo, %sDirection, %sMessage_Type, %sMessage_Date_time, %sMember_Id, %sMessage_Data, %sLead.Full_Name from %sWoztell_logs "
-         "where %sMessage_Date_time between '%s' and '%s'" % (W, W, W, W, W, W, W, W, W, W, start, now.isoformat(timespec="seconds")))
+    q = ("select %sFrom, %sTo, %sDirection, %sMessage_Type, %sMessage_Date_time, %sMember_Id, %sMessage_Data, %sLead.Full_Name, %sChannel_Type from %sWoztell_logs "
+         "where %sMessage_Date_time between '%s' and '%s'" % (W, W, W, W, W, W, W, W, W, W, W, start, now.isoformat(timespec="seconds")))
     rows = z.all(q)
+    try:   # automated senders to leave out (private config)
+        with open(os.path.expanduser("~/.config/pawkit-cs360/config.json")) as f:
+            ignore = set(json.load(f).get("_wa_ignore_numbers") or [])
+    except (OSError, ValueError):
+        ignore = set()
     conv = {}
     for r in sorted(rows, key=lambda r: r.get(W + "Message_Date_time") or ""):
+        if (r.get(W + "From") if r.get(W + "Direction") == "In" else r.get(W + "To")) in ignore:
+            continue
         t, typ, d = r.get(W + "Message_Date_time"), r.get(W + "Message_Type"), r.get(W + "Direction")
         if not t or not typ or typ in ("SMB_CONTACTS", "READ", "SENT", "DELIVERY") or d not in ("In", "Out"):
             continue
         if typ == "REACT" and d == "In":      # a customer's emoji reaction asks for nothing
+            continue
+        if (r.get(W + "Channel_Type") or "whatsapp-cloud") != "whatsapp-cloud":   # Instagram messages and comments are not WhatsApp chats
             continue
         key = r.get(W + "Member_Id") or (r.get(W + "From") if d == "In" else r.get(W + "To"))
         c = conv.setdefault(key, {"pend": [], "name": None, "tel": None, "ins": 0, "waits": [], "last_in": None})
@@ -101,6 +111,12 @@ def whatsapp_status(z, now):
                     text = str(json.loads(r.get(W + "Message_Data") or "{}").get("text") or "")
                 except (ValueError, AttributeError):
                     text = str(r.get(W + "Message_Data") or "")
+            if typ != "TEXT":   # a photo, voice note, file and so on: say what it was, with its caption if any
+                try:
+                    cap = str((json.loads(r.get(W + "Message_Data") or "{}") or {}).get("text") or "")
+                except (ValueError, AttributeError):
+                    cap = ""
+                text = "[%s]%s" % (typ.lower().replace("_", " "), " " + cap if cap else "")
             c["pend"].append((t, typ, text))
             c["ins"] += 1; c["last_in"] = t
             c["tel"] = "".join(ch for ch in (r.get(W + "From") or "") if ch.isdigit())
@@ -154,7 +170,8 @@ def whatsapp_status(z, now):
             if not name or name.lower().startswith("unknown") or name.replace(" ", "").replace("+", "").isdigit():
                 name = None
             out["waiting"].append({"name": name, "tel": c["tel"], "since": pend[0][0], "mins": mins, "n": len(pend),
-                                   "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word), "prov": bool(pname)})
+                                   "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word), "prov": bool(pname),
+                                   "msgs": [{"t": p[0], "x": p[2][:1200]} for p in pend[-8:]]})
             if pname:
                 out["waiting"][-1]["name"] = pname
         if c["last_in"] and c["last_in"][:10] == today and not pname:

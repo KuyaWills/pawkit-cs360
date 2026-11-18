@@ -230,6 +230,22 @@ td a[title="Open in Zoho"]:hover{color:var(--brand);text-decoration-color:var(--
 
 a.btnlink{display:inline-block;background:var(--brand);color:#fff;font-weight:700;text-decoration:none;border-radius:999px;padding:9px 18px}
 a.btnlink:hover{background:var(--brand2)}
+
+tr.wrow{cursor:pointer}
+tr.wrow:hover td{background:var(--mint)}
+tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6px;white-space:nowrap}
+#waPop{display:none;position:absolute;z-index:40;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 14px 40px rgba(0,60,55,.18);overflow:hidden}
+#waPop::before{content:"";position:absolute;top:-8px;left:36px;width:14px;height:14px;background:var(--brand-soft);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+#waPop.up::before{top:auto;bottom:-8px;background:var(--surface);transform:rotate(225deg)}
+#waPop .ph{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--brand-soft);position:relative}
+#waPop .ph div{display:flex;flex-direction:column;line-height:1.3}
+#waPop .ph span{font-size:12.5px;color:var(--ink2)}
+#waPop .ph button{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--ink2);padding:2px 8px;cursor:pointer}
+#waPop .pb{padding:14px;max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:10px;background:#f6fbfa}
+#waPop .bub{align-self:flex-start;max-width:92%}
+#waPop .bx{background:#fff;border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:9px 12px;font-size:14px;line-height:1.45;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+#waPop .bt{font-size:11.5px;color:var(--ink3);margin:3px 0 0 4px}
+#waPop .pf{padding:9px 14px;font-size:12px;color:var(--ink3);border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -370,7 +386,7 @@ a.btnlink:hover{background:var(--brand2)}
       <div class="tiles" id="waNowTiles"></div>
       <div class="card">
         <h2 id="waNowTitle">Waiting for a reply</h2>
-        <p class="sub">Longest wait first. Message text is not shown here: find the chat in WOZTELL by the name or the number.</p>
+        <p class="sub">Longest wait first. Click a row to read the unanswered message. Reply from WOZTELL: find the chat by the name or the number.</p>
         <div class="tablewrap"><table id="waNow"></table></div>
       </div>
     </div>
@@ -626,7 +642,7 @@ let DECIDE=null;
 // WhatsApp reply status: answered, waiting, needs urgent care (worked out by refresh.py from the last 48 hours)
 // a record name that opens that record in Zoho CRM (link bases come from the private config)
 const recLink=(kind,id,text)=>{ const b=((CFG&&CFG.links||{}).record||{})[kind]; return b&&id?`<a href="${esc(b+encodeURIComponent(id))}" target="_blank" rel="noopener" title="Open in Zoho">${esc(text)}</a>`:esc(text); };
-let WN_F='waiting', WN_SEG='cust';
+let WN_F='waiting', WN_SEG='cust', WN_ROWS=[];
 const telFmt=t=>{ t=String(t||''); if(/^65\d{8}$/.test(t)) return '+65 '+t.slice(2,6)+' '+t.slice(6); return t?'+'+t:''; };
 function renderWaNow(){
   const W=D.wa_now, wrap=$('waNowWrap'); if(!W){ wrap.style.display='none'; return; } wrap.style.display='';
@@ -643,9 +659,29 @@ function renderWaNow(){
     t('urgent','Needs urgent care',urg.length,urg.length?'waiting '+W.urgent_after+' min or more, or urgent word':'none right now',urg.length?'bad':'good')+
     (isP?'':t('all','Typical reply time',W.median_reply_min==null?'–':age(W.median_reply_min),'median today, customer message to reply'));
   const V=WN_F==='urgent'?urg:wt;
+  WN_ROWS=V;
   $('waNowTitle').textContent=(WN_F==='urgent'?'Needs urgent care':'Waiting for a reply')+' ('+V.length+')';
-  $('waNow').innerHTML=V.length?'<tr><th>'+(isP?'Provider':'Customer')+'</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map(w=>`<tr><td>${esc(w.name||'No name in Zoho')}</td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
+  $('waNow').innerHTML=V.length?'<tr><th>'+(isP?'Provider':'Customer')+'</th><th>Number</th><th>Waiting since</th><th>Waiting</th><th class="num">Unanswered messages</th><th>Status</th></tr>'+V.map((w,i)=>`<tr class="wrow" data-wi="${i}" tabindex="0" title="Click to read the message"><td>${esc(w.name||'No name in Zoho')} <span class="readmsg">read ›</span></td><td style="white-space:nowrap">${esc(telFmt(w.tel))}</td><td style="white-space:nowrap">${esc(fmtDay(dayOf(w.since)))+', '+esc(t12(timeOf(w.since)))}</td><td style="white-space:nowrap">${esc(age(w.mins))}</td><td class="num">${w.n}</td><td>${w.urgent?'<span class="pill bad">urgent'+(w.word?': urgent word':'')+'</span>':'<span class="pill warn">waiting</span>'}</td></tr>`).join(''):'<tr><td class="muted">Nobody is waiting. All caught up.</td></tr>';
 }
+// pop-up bubble with the unanswered messages of one waiting chat
+function waPop(row){
+  const w=WN_ROWS[Number(row.dataset.wi)]; let p=$('waPop'); if(!w) return;
+  if(!p){ p=document.createElement('div'); p.id='waPop'; p.setAttribute('role','dialog'); document.body.appendChild(p); }
+  const msgs=(w.msgs||[]);
+  p.innerHTML='<div class="ph"><div><b>'+esc(w.name||'No name in Zoho')+'</b><span>'+esc(telFmt(w.tel))+'</span></div><button type="button" id="waPopX" aria-label="Close">×</button></div>'+
+    '<div class="pb">'+(msgs.length?msgs.map(m=>'<div class="bub"><div class="bx">'+esc(m.x||'(no text)').replace(/\n/g,'<br>')+'</div><div class="bt">'+esc(fmtDay(dayOf(m.t)))+', '+esc(t12(timeOf(m.t)))+'</div></div>').join(''):'<div class="muted">The message text has not arrived yet. It shows after the next update.</div>')+'</div>'+
+    '<div class="pf">'+(w.n>msgs.length?'Showing the latest '+msgs.length+' of '+w.n+' unanswered messages. ':'')+'Reply in WOZTELL.</div>';
+  const r=row.getBoundingClientRect(), W=Math.min(440,window.innerWidth-24);
+  p.style.width=W+'px'; p.style.display='block';
+  p.style.left=Math.max(12,Math.min(r.left+window.scrollX+24,window.scrollX+window.innerWidth-W-12))+'px';
+  const ph=p.offsetHeight, below=r.bottom+8+ph<window.innerHeight;
+  p.style.top=(below?r.bottom+window.scrollY+8:Math.max(window.scrollY+12,r.top+window.scrollY-ph-8))+'px';
+  p.classList.toggle('up',!below);
+  $('waPopX').addEventListener('click',waPopClose);
+}
+function waPopClose(){ const p=$('waPop'); if(p) p.style.display='none'; }
+document.addEventListener('click',e=>{ const row=e.target.closest('tr.wrow'); if(row){ waPop(row); return; } if(!e.target.closest('#waPop')) waPopClose(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') waPopClose(); const row=e.target.closest&&e.target.closest('tr.wrow'); if(row&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); waPop(row); } });
 document.addEventListener('click',e=>{ const b=e.target.closest('#waSeg button'); if(b){ WN_SEG=b.dataset.s; renderWaNow(); } });
 document.addEventListener('click',e=>{ const t=e.target.closest('[data-wn]'); if(!t) return; WN_F=t.dataset.wn==='all'?'waiting':t.dataset.wn; renderWaNow(); $('waNow').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); });
 // sick leave needs a medical document: say whether one is attached to the request in Zoho
