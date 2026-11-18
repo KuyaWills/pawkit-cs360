@@ -401,7 +401,7 @@ footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
     <div class="two">
       <div class="card">
         <h2>Request time off</h2>
-        <p class="sub">Charlene gets an email and approves or rejects it from there. Sick leave needs a medical document attached. You come back to this page after sending; the request shows here within a few minutes.</p>
+        <p class="sub">This form is now the way to ask for time off (it replaces applying in Payboy). Charlene gets an email and approves or rejects it from there. Sick leave needs a medical document attached. You come back to this page after sending; the request shows here within a few minutes.</p>
         <form id="lvForm" class="lvform" action="https://crm.zoho.com/crm/WebForm" method="POST" enctype="multipart/form-data" accept-charset="UTF-8">
           <input type="hidden" name="xnQsjsdp" value="ce0e4d8bcb6537f4b91217594d13e0966bdc3b9a7ec3779634f22cafc6a6fd28">
           <input type="hidden" name="zc_gad" value="">
@@ -762,7 +762,7 @@ function render(day){
     $('lvTiles').innerHTML=tile('Waiting for approval',pend.length,'Charlene decides by email','lv:Pending')+tile('Off today, approved',onNow.length,onNow.map(l=>l.name).join(', ')||fmtDay(td),'lv:today')+tile('Approved, upcoming',upc.length,'today onwards','lv:upcoming')+tile('All requests',L.length,D.leave?'':'not loaded yet','lv:all');
     $('lvPending').innerHTML=pend.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Cover</th><th>Asked</th><th></th></tr>'+pend.sort((a,b)=>(a.from||'').localeCompare(b.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td class="muted">${esc(l.cover||'')}</td><td class="muted">${l.asked?esc(fmtDay(dayOf(l.asked))):''}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):'<tr><td class="muted">Nothing waiting.</td></tr>';
     const k=(ACT_ON.lv||'lv:all').split(':')[1], V=k==='Pending'?pend:k==='today'?onNow:k==='upcoming'?upc:L;
-    $('pbNote').textContent=D.payboy_synced?'Includes approved leave copied from Payboy on '+fmtDay(D.payboy_synced)+'. Leave approved in Payboy after that day is not here until it is copied again.':'';
+    $('pbNote').textContent=D.payboy_synced?'Leave approved in Payboy up to '+fmtDay(D.payboy_synced)+' is listed here as history. From now on, time off is requested on this page, not in Payboy.':'';
     $('lvTitle').textContent=({Pending:'Requests waiting for approval',today:'Off today, approved',upcoming:'Approved time off, today onwards',all:'All time off requests'})[k]+' ('+V.length+')';
     $('lvNote').innerHTML=k==='all'?'':'<a href="#leave" data-clear="lv">show all requests</a>';
     const pill=st=>`<span class="pill ${st==='Approved'?'on':st==='Rejected'?'bad':st==='Pending'?'warn':''}">${esc(st)}</span>`;
