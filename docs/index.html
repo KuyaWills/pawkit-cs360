@@ -504,8 +504,9 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
       <div class="tablewrap"><table id="lvBal"></table></div>
     </div>
     <div class="card">
-      <h2>Rest days and time off this week</h2>
-      <p class="sub">Rest days from the schedule tracker, with approved time off added.</p>
+      <h2>Rest days and time off</h2>
+      <div class="rangebar" style="margin:6px 0 8px"><div class="datepick"><button id="offPrev" aria-label="Previous week" title="Previous week">‹</button><select id="offSel" aria-label="Pick a week"></select><button id="offNext" aria-label="Next week" title="Next week">›</button><button id="offNow" class="todaybtn">This week</button></div></div>
+      <p class="sub" id="offSub"></p>
       <div class="tablewrap"><table id="offWeek"></table></div>
     </div>
   </section>
@@ -845,6 +846,7 @@ function showUpdated(){
   el.style.color=mins<=LV?'var(--good)':mins>60?'var(--warn)':'';
 }
 const ACT_ON={};
+let OFF_WK=null;   // Monday of the week shown in Rest days and time off
 let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null, LIVE_FAILED=false;
 async function getJSON(url,opts){
   const c=new AbortController(), t=setTimeout(()=>c.abort(),30000);
@@ -1113,9 +1115,26 @@ function render(day){
     `<tr><th>14 days</th><th class="num">${tin.toLocaleString()}</th><th class="num">${tout.toLocaleString()}</th><th></th><th></th><th></th></tr>`;
 
   // ---- leave: off this week ----
-  $('offWeek').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th>${esc(fmtDay(d).replace(/ \w+$/,''))}</th>`).join('')+'</tr>'+
-    CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td>${['OFF','LEAVE','SICK'].includes(c)?`<span class="pill ${c==='OFF'?'':'warn'}">${esc((CFG.shift_codes[c]||{}).label||c)}</span>`:''}</td>`;}).join('')+'</tr>').join('');
-
+  { const mon0=addDays(now.day,-((dparts(now.day).getUTCDay()+6)%7)), yEnd=now.day.slice(0,4)+'-12-31', wks=[];
+    for(let m=mon0;m<=yEnd;m=addDays(m,7)) wks.push(m);
+    if(!wks.includes(OFF_WK)) OFF_WK=mon0;
+    const dm=d=>{const x=dparts(d);return x.getUTCDate()+' '+MON[x.getUTCMonth()];}, ix=wks.indexOf(OFF_WK);
+    $('offSel').innerHTML=wks.map((m,i)=>`<option value="${m}"${m===OFF_WK?' selected':''}>${esc((i===0?'This week · ':i===1?'Next week · ':'')+dm(m)+' to '+dm(addDays(m,6)))}</option>`).join('');
+    $('offPrev').disabled=ix<=0; $('offNext').disabled=ix>=wks.length-1; $('offNow').style.visibility=ix===0?'hidden':'';
+    const wd=[0,1,2,3,4,5,6].map(n=>addDays(OFF_WK,n)), sched=wd.some(d=>CFG.roster[d]);
+    const lv=(D.leave||[]).filter(l=>l.status==='Approved'&&l.name&&l.from);
+    const cell=(n,d)=>{ const c=(CFG.roster[d]||{})[n]; if(c) return ['OFF','LEAVE','SICK'].includes(c)?c:'';
+      const l=lv.find(l=>l.name===n&&d>=l.from&&d<=(l.to||l.from)); return l?(/^(Sick|Outpatient|Hospitali[sz]ation)/i.test(l.type||'')?'SICK':'LEAVE'):''; };
+    const rowsOff=CFG.people.map(p=>({n:p.name,c:wd.map(d=>cell(p.name,d))})), any=rowsOff.some(r=>r.c.some(Boolean));
+    $('offSub').textContent=sched?'Rest days from the schedule tracker, with approved time off added.':'Rest days for this week are not in the schedule tracker yet, so this shows approved time off only.'+(any?'':' Nobody has approved time off this week.');
+    $('offWeek').innerHTML='<tr><th>Name</th>'+wd.map(d=>`<th>${esc(fmtDay(d))}</th>`).join('')+'</tr>'+
+      rowsOff.map(r=>'<tr><td>'+esc(r.n)+'</td>'+r.c.map(c=>`<td>${c?`<span class="pill ${c==='OFF'?'':'warn'}">${esc((CFG.shift_codes[c]||{}).label||c)}</span>`:''}</td>`).join('')+'</tr>').join('');
+    if(!$('offSel').dataset.on){ $('offSel').dataset.on=1; const go=w=>{OFF_WK=w; render($('day').value);};
+      $('offSel').addEventListener('change',e=>go(e.target.value));
+      $('offPrev').addEventListener('click',()=>{const o=[...$('offSel').options].map(x=>x.value);go(o[Math.max(0,o.indexOf(OFF_WK)-1)]);});
+      $('offNext').addEventListener('click',()=>{const o=[...$('offSel').options].map(x=>x.value);go(o[Math.min(o.length-1,o.indexOf(OFF_WK)+1)]);});
+      $('offNow').addEventListener('click',()=>go(null)); }
+  }
 
   // ---- tasks ----
   const stPill=s=>`<span class="pill ${s==='Completed'?'on':/Waiting/.test(s||'')?'warn':s==='In Progress'?'brand':''}">${esc(s||'No status')}</span>`;
