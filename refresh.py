@@ -483,7 +483,7 @@ def main():
         for d in sorted(dec, key=lambda d: d.get("Created_Time") or ""):
             l = byid.get((d.get("Request_ID") or "").strip())
             if l and d.get("Decision") in ("Approved", "Rejected") and hmac.compare_digest(str(d.get("Approval_Key") or ""), akey):
-                l.update(status=d["Decision"], by="%s (by email)" % pc.get("_approver", "Approver"), when=d.get("Created_Time"))
+                l.update(status=d["Decision"], by="%s (by email)" % (pc.get("_approver_own", "Charlene") if l["name"] == "Vince" else pc.get("_approver", "Approver")), when=d.get("Created_Time"))
 
     s30 = (today - timedelta(days=30)).isoformat()
     inv = [{"d": b.get("Date_Time"), "s": b.get("Booking_Status"), "inv": b.get("Invoice_Status"), "po": b.get("Paid_On"),
