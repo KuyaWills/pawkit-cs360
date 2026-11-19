@@ -1260,7 +1260,8 @@ function renderBookings(day){
   const upcoming=D.visits.filter(r=>dayOf(r.d)>now.day && r.s!=='Cancelled');
   const tile=(view,k,v,d)=>`<div class="tile click${BK_VIEW===view?' on':''}" role="button" tabindex="0" data-v="${view}" title="Show the list"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'').replace(/\$\d+(,\d{3})*/g,m=>'<b>'+m+'</b>')}</div></div>`;
   const NOT_REAL=['New enquiry','Not fulfilled','Archive'], HIDE_BY=CFG.hide_by||[];
-  const real=r=>!NOT_REAL.includes(r.s)&&!HIDE_BY.includes(r.by);
+  // bookings made in the Pawkit app arrive under the integration's login: show them as "Pawkit app", not under that person
+  const real=r=>!NOT_REAL.includes(r.s)&&(r.app||!HIDE_BY.includes(r.by)), whoMade=r=>r.app?'Pawkit app':(r.by||'Unknown');
   $('byPersonNote').textContent=CFG.by_person_note||'';
   const madeR=made.filter(real);
   const money0=v=>'$'+Math.round(v||0).toLocaleString();
@@ -1307,11 +1308,11 @@ function renderBookings(day){
   $('bkChartTitle').textContent=isDay?'Bookings made per day, last 14 days':'Bookings made per day, '+R.label;
   barChart($('bkChart'),cdays,ser,d=>byDay[d]||{},day,true,d=>{BK_DAY=d; setRange('day');});
   // by person
-  const by=cnt(madeR,r=>r.by||'Unknown');
+  const by=cnt(madeR,whoMade), byAmt={}; madeR.forEach(r=>{const k=whoMade(r); byAmt[k]=(byAmt[k]||0)+(r.amt||0);});
   const names=Object.keys(by).sort((a,b)=>by[b]-by[a]);
-  $('byPerson').innerHTML='<tr><th>Created by</th><th class="num">'+esc(R.label)+'</th><th class="num">Share</th></tr>'+
-    (names.length?names.map(n=>`<tr><td>${esc(n)}</td><td class="num">${by[n]}</td><td class="num">${Math.round(by[n]/madeR.length*100)}%</td></tr>`).join(''):'<tr><td colspan="3" class="muted">No real bookings in this range.</td></tr>')+
-    `<tr><th>Total</th><th class="num">${madeR.length}</th><th></th></tr>`;
+  $('byPerson').innerHTML='<tr><th>Created by</th><th class="num">'+esc(R.label)+'</th><th class="num">Share</th><th class="num">Amount</th></tr>'+
+    (names.length?names.map(n=>`<tr><td>${esc(n)}</td><td class="num">${by[n]}</td><td class="num">${Math.round(by[n]/madeR.length*100)}%</td><td class="num">${money0(byAmt[n])}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">No real bookings in this range.</td></tr>')+
+    `<tr><th>Total</th><th class="num">${madeR.length}</th><th></th><th class="num">${money0(madeR.reduce((a,r)=>a+(r.amt||0),0))}</th></tr>`;
   // detail list (driven by the clicked tile)
   const pillFor=s=>s==='Completed'?'on':s==='Cancelled'||s==='No show'||s==='Not fulfilled'?'bad':s==='Scheduled'?'brand':'warn';
   const when=(iso,withDay)=>iso?(withDay?esc(fmtDay(dayOf(iso)))+', ':'')+esc(t12(timeOf(iso))):'';
@@ -1332,7 +1333,7 @@ function renderBookings(day){
   } else {
     const hasWhy=V.rows.some(r=>!['Scheduled','Completed'].includes(r.s));   // cancelled, rescheduled and similar rows get a reason column
     $('visits').innerHTML=V.rows.length?'<tr><th>'+(multi?'Date and time':'Time')+'</th><th>Service</th><th>Area</th><th>Provider</th><th>Status</th><th>Customer</th><th class="num">Amount</th><th>Invoice</th>'+(hasWhy?'<th style="min-width:220px">Reason and notes</th>':'')+'</tr>'+
-      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${r.rep?'<span class="pill brand">repeat</span>':r.o?'<span class="pill">new</span>':''}</td><td class="num">${r.amt!=null?'$'+esc(r.amt):''}</td><td class="muted">${esc(r.inv||'')}</td>${hasWhy?`<td>${r.why?'<span class="pill warn">'+esc(r.why)+'</span> ':''}${esc(r.whyn||'')}${!r.why&&!r.whyn&&!['Scheduled','Completed'].includes(r.s)?'<span class="muted">No reason recorded in Zoho</span>':''}</td>`:''}</tr>`).join('')+(V.rows.length?`<tr><th colspan="6">Total</th><th class="num">${money0(V.rows.reduce((a,r)=>a+(r.amt||0),0))}</th><th${hasWhy?' colspan="2"':''}></th></tr>`:'')
+      V.rows.slice().sort((a,b)=>(a.d||'').localeCompare(b.d||'')).map(r=>`<tr><td style="white-space:nowrap">${when(r.d,multi)}${r.e?'–'+esc(t12(timeOf(r.e))):''}</td><td>${esc(r.cat||'–')}</td><td class="area" title="${esc(r.a||'')}">${esc(r.a||'–')}</td><td>${esc(r.p||'Not assigned')}</td><td><span class="pill ${pillFor(r.s)}">${esc(r.s||'No status')}</span></td><td>${r.rep?'<span class="pill brand">repeat</span>':r.o?'<span class="pill">new</span>':''}${r.app?' <span class="pill on">app</span>':''}</td><td class="num">${r.amt!=null?'$'+esc(r.amt):''}</td><td class="muted">${esc(r.inv||'')}</td>${hasWhy?`<td>${r.why?'<span class="pill warn">'+esc(r.why)+'</span> ':''}${esc(r.whyn||'')}${!r.why&&!r.whyn&&!['Scheduled','Completed'].includes(r.s)?'<span class="muted">No reason recorded in Zoho</span>':''}</td>`:''}</tr>`).join('')+(V.rows.length?`<tr><th colspan="6">Total</th><th class="num">${money0(V.rows.reduce((a,r)=>a+(r.amt||0),0))}</th><th${hasWhy?' colspan="2"':''}></th></tr>`:'')
       :'<tr><td class="muted">Nothing in this range.</td></tr>';
   }
   // by service
