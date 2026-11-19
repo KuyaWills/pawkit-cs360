@@ -1268,10 +1268,10 @@ function renderBoard(){
   let html='';
   groups.forEach(g=>{
     const rows=T.filter(g.f).sort((a,b)=>(a.due||'9').localeCompare(b.due||'9'));
-    if(filtered&&!rows.length) return;
+    if(!rows.length) return;
     html+=`<div class="grp${FOLD[g.k]&&!filtered?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><i class="dot"></i>${esc(g.name)}<span class="n">${rows.length}</span><span class="chev">▾</span></button><div class="grp-b">`;
     html+=rows.length?rows.map(t=>{
-      const meta=[g.k==='wait'?WAIT_ON[t.s]||'':'', t.wait?'on '+t.wait:'', t.prov?t.prov:'', t.bid?'Booking '+t.bid:''].filter(Boolean).join(' · ');
+      const meta=[g.k==='wait'?WAIT_ON[t.s]||'':'', t.wait||'', t.prov?t.prov:'', t.bid?'Booking '+t.bid:''].filter(Boolean).join(' · ');
       const hi=/^High/.test(t.pr||'')?`<span class="tk-pr">${esc(t.pr)}</span>`:'';
       return `<div class="tk"><div class="tk-main"><div class="tk-sub">${recLink('task',t.id,t.sub||'(no subject)')}${hi}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}</div>${meta?`<div class="tk-meta">${esc(meta)}</div>`:''}</div>
         <div class="tk-side"><span class="tk-own">${t.own?`<span class="av" style="background:${avCol(t.own)}" title="${esc(t.own)}">${esc(initials(t.own))}</span>${esc(t.own.split(' ')[0])}`:'<span class="muted">No owner</span>'}</span>${dueTxt(t)}</div></div>`;
