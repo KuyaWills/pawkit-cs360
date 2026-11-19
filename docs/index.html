@@ -124,32 +124,27 @@ section[data-panel].active{display:block}
 .board-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
 .board-tools{display:flex;gap:8px;flex-wrap:wrap}
 .board-tools input{min-width:180px}
-.grp{margin-bottom:22px}
-.grp-h{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;margin:0 0 6px;background:none;border:0;padding:4px 0;color:var(--gc);font-weight:900;font-size:16px}
-.grp-h .chev{transition:transform .15s;display:inline-block;font-size:12px}
+.grp{margin-bottom:18px}
+.grp-h{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;width:100%;margin:0;background:none;border:0;border-bottom:1px solid var(--line);padding:8px 2px;color:var(--ink);font:700 13px/1.2 inherit;font-family:inherit;text-transform:uppercase;letter-spacing:.06em;text-align:left}
+.grp-h .dot{width:9px;height:9px;border-radius:50%;background:var(--gc);display:inline-block}
+.grp-h .n{color:var(--ink3);font-weight:400;letter-spacing:0}
+.grp-h .chev{margin-left:auto;color:var(--ink3);transition:transform .15s}
 .grp.fold .chev{transform:rotate(-90deg)}
 .grp.fold .grp-b{display:none}
-.grp-h .n{color:var(--ink3);font-weight:400;font-size:13px}
-.grp-b{border-left:5px solid var(--gc);border-radius:8px;overflow-x:auto;background:var(--surface);box-shadow:0 0 0 1px var(--line)}
-.btbl{width:100%;border-collapse:separate;border-spacing:0;min-width:820px;table-layout:fixed}
-.btbl th{font-size:12px;color:var(--ink3);font-weight:600;text-align:center;padding:8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
-.btbl td{padding:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);height:44px;text-align:center;vertical-align:middle;font-size:13.5px;overflow:hidden;text-overflow:ellipsis}
-.btbl th:first-child,.btbl td:first-child{text-align:left}
-.btbl td.t{padding:8px 12px}
-.btbl tr:last-child td{border-bottom:0}
-.btbl tr:hover td{background:var(--brand-soft)}
-.btbl tr:hover td.lab{filter:brightness(1.04)}
-.btbl td.lab{color:#fff;font-weight:700;font-size:12.5px;padding:0 10px;white-space:nowrap}
-.av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;color:#fff;font-size:11.5px;font-weight:700;vertical-align:middle}
-.ownc{display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;white-space:nowrap}
-.ownc span{font-size:12.5px;color:var(--ink2)}
-.due{white-space:nowrap;padding:0 8px}
-.due.over{color:var(--bad);font-weight:700}
-.due.today{color:var(--warn);font-weight:700}
-.tsub{color:var(--ink3);font-size:12px;display:block;margin-top:2px}
-.sum td{height:30px;background:var(--bg)}
-.bar100{display:flex;height:18px;border-radius:4px;overflow:hidden;margin:0 8px}
-.bar100 i{display:block;height:100%}
+.tk{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:11px 2px 11px 17px;border-bottom:1px solid var(--line);position:relative}
+.tk:before{content:"";position:absolute;left:4px;top:14px;bottom:14px;width:3px;border-radius:2px;background:var(--gc);opacity:.55}
+.tk:hover{background:var(--brand-soft)}
+.tk-main{min-width:0;flex:1}
+.tk-sub{font-size:14.5px;font-weight:700;line-height:1.35}
+.tk-sub a{color:var(--ink);text-decoration:none}.tk-sub a:hover{color:var(--brand);text-decoration:underline}
+.tk-meta{color:var(--ink3);font-size:12.5px;margin-top:2px}
+.tk-pr{margin-left:8px;font-size:11px;font-weight:700;color:var(--bad);border:1px solid currentColor;border-radius:999px;padding:0 7px;vertical-align:2px}
+.tk-side{display:flex;align-items:center;gap:18px;flex-shrink:0;font-size:13px;color:var(--ink2)}
+.tk-own{display:inline-flex;align-items:center;gap:6px;min-width:96px}
+.tk-due{min-width:108px;text-align:right;color:var(--ink3)}
+.tk-due.over{color:var(--bad);font-weight:700}.tk-due.today{color:var(--warn);font-weight:700}
+.av{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;color:#fff;font-size:10.5px;font-weight:700}
+@media (max-width:640px){.tk{flex-direction:column;align-items:flex-start;gap:6px}.tk-side{gap:14px}.tk-due{min-width:0;text-align:left}.tk-own{min-width:0}}
 .rangebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px}
 .seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
 .seg button{border:0;background:none;border-radius:999px;padding:6px 16px;font-weight:700;color:var(--ink2)}
@@ -314,7 +309,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
   <section data-panel="schedule">
     <div class="card">
       <h2 id="tlTitle">Coverage</h2>
-      <p class="sub">Each bar is a shift, Singapore time, 7am to 11pm. The red line is the time now. The bottom row counts human agents on shift each half hour.</p>
+      <p class="sub">Each bar is a shift, Singapore time, 7am to 11pm. The red line is the time now. The bottom rows count CS agents, Ops agents and all agents on shift each half hour.</p>
       <div class="tablewrap"><div id="timeline"></div></div>
     </div>
     <div class="card">
@@ -432,7 +427,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     </details>
     <div class="card board-card">
       <div class="board-head">
-        <div><h2>Tasks board</h2><p class="sub" style="margin:0">The same tasks as the Task Tracker and Zoho CRM, grouped by status. Click a tile above to filter, or a group to fold it.</p><p class="sub" id="tkFilterNote" style="margin:4px 0 0;font-weight:700;color:var(--brand)"></p></div>
+        <div><h2>Tasks</h2><p class="sub" style="margin:0">The same tasks as the Task Tracker, by status. Click a task to open it in Zoho, or a heading to fold it.</p><p class="sub" id="tkFilterNote" style="margin:4px 0 0;font-weight:700;color:var(--brand)"></p></div>
         <div class="board-tools">
           <input id="tkSearch" type="search" placeholder="Search tasks" aria-label="Search tasks">
           <select id="tkOwner" aria-label="Filter by person"><option value="">Everyone</option></select>
@@ -945,7 +940,9 @@ function render(day){
   const vis=D.visits.filter(r=>dayOf(r.d)===day);
   const vs=cnt(vis,r=>r.s||'No status');
   const openComp=D.comp.filter(c=>!['Resolved','Closed'].includes(c.s));
-  const agents=CFG.people.filter(p=>p.agent);
+  const agents=CFG.people.filter(p=>p.agent), csA=agents.filter(p=>p.team!=='Ops'), opsA=agents.filter(p=>p.team==='Ops');
+  const TEAMS=opsA.length?[['CS agents on',csA],['Ops agents on',opsA],['All agents on',agents]]:[['Human agents on',agents]];   // one count per team, then the total
+  const split=fn=>opsA.length?' ('+csA.filter(fn).length+' CS, '+opsA.filter(fn).length+' Ops)':'';
 
   // ---- flags ----
   const flags=[];
@@ -979,8 +976,8 @@ function render(day){
     const chips=CFG.people.map(p=>{ const c=roster?roster[p.name]:null, lv=['LEAVE','SICK'].includes(c), on=isToday&&c&&onAt(c,now.min), work=c&&shiftHours(c).length;
       return `<span class="chip ${on?'on':lv?'lv':work?'':'off'}" title="${esc(c?(hoursText(c)||(CFG.shift_codes[c]||{}).label||c):'No schedule')}">${esc(p.name)}${on?' · on now':lv?' · '+esc(((CFG.shift_codes[c]||{}).label||c).toLowerCase()):work?' · '+esc(c):' · off'}</span>`; }).join('');
     const wf=card('workforce','People','Workforce','go:schedule',[
-      st(isToday?nowOn.length:onCount,isToday?'agents on shift now':'agents on shift','go:schedule',isToday&&roster&&!nowOn.length&&now.min>=toMin('09:00')&&now.min<toMin('22:00')?'bad':''),
-      st(onCount,'agents working '+dayLbl,'go:schedule'),
+      st(isToday?nowOn.length:onCount,(isToday?'agents on shift now':'agents on shift')+(roster?split(p=>isToday?onAt(roster[p.name],now.min):shiftHours(roster[p.name]).length):''),'go:schedule',isToday&&roster&&!nowOn.length&&now.min>=toMin('09:00')&&now.min<toMin('22:00')?'bad':''),
+      st(onCount,'agents working '+dayLbl+(roster?split(p=>shiftHours(roster[p.name]).length):''),'go:schedule'),
       st(offDay.length,'on approved time off','go:leave',offDay.length?'warn':''),
       st(pendL.length,'time off to approve','go:leave',pendL.length?'warn':'')],chips);
     // customer service
@@ -1031,7 +1028,7 @@ function render(day){
   $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[weekDays.length-1])+'. Click a date to see its coverage above.';
   $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" role="button" tabindex="0" title="Show coverage for this date" style="cursor:pointer">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
     CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer"><span class="code ${esc(c)}">${esc(c||'–')}</span></td>`;}).join('')+'</tr>').join('')+
-    '<tr><th>Human agents on</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer">${agents.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>';
+    TEAMS.map(([lbl,grp])=>'<tr><th>'+esc(lbl)+'</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer">${grp.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>').join('');
   if(!$('week').dataset.on){ $('week').dataset.on=1; const pick=e=>{ const c=e.target.closest('[data-sd]'); if(!c) return; if(e.type==='keydown'){ if(e.key!=='Enter'&&e.key!==' ') return; e.preventDefault(); }
       SCHED_DAY=c.dataset.sd; render($('day').value); $('tlTitle').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); };
     $('week').addEventListener('click',pick); $('week').addEventListener('keydown',pick); }
@@ -1101,18 +1098,21 @@ function render(day){
     else bars=`<div class="tag" style="left:8px">${esc(code?((CFG.shift_codes[code]||{}).label||code):'Not on the schedule')}</div>`;
     tl+=`<div class="row"><div class="name">${esc(p.name)}<small>${esc(p.role)}</small></div><div class="track">${grid()}${bars}</div></div>`;
   });
-  tl+='<div class="row"><div class="name">Human agents on<small>each half hour</small></div><div class="track" style="display:flex;align-items:center"><div class="cov" style="width:100%">';
-  for(let m=T0;m<T1;m+=30){ const n=sRoster?agents.filter(p=>onAt(sRoster[p.name],m)).length:0; tl+=`<div class="c${Math.min(n,3)}" title="${t12(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'))}: ${n} on">${n}</div>`; }
-  tl+='</div></div></div></div>';
+  TEAMS.forEach(([lbl,grp])=>{ const cap=Math.min(3,grp.length);   // green once the whole team, or three people, are on
+    tl+='<div class="row"><div class="name">'+esc(lbl)+'<small>each half hour</small></div><div class="track" style="display:flex;align-items:center"><div class="cov" style="width:100%">';
+    for(let m=T0;m<T1;m+=30){ const n=sRoster?grp.filter(p=>onAt(sRoster[p.name],m)).length:0; tl+=`<div class="c${n>=cap?3:Math.min(n,2)}" title="${t12(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'))}: ${n} on">${n}</div>`; }
+    tl+='</div></div></div>'; });
+  tl+='</div>';
   $('timeline').innerHTML=sRoster?tl:'<p class="muted">No schedule for this day in the tracker yet.</p>';
 
   // ---- schedule: week checks ----
-  $('weekChecks').innerHTML='<tr><th>Day</th><th class="num">Agents</th><th>8am</th><th>9:30pm</th><th>3+ agents</th></tr>'+weekDays.map(d=>{
+  $('weekChecks').innerHTML='<tr><th>Day</th>'+(opsA.length?'<th class="num">CS</th><th class="num">Ops</th>':'')+'<th class="num">Agents</th><th>8am</th><th>9:30pm</th><th>3+ agents</th></tr>'+weekDays.map(d=>{
     const r=CFG.roster[d]||{}; const n=agents.filter(p=>shiftHours(r[p.name]).length).length; const dow=dparts(d).getUTCDay();
     const am=(dow===0||dow===6)?'<span class="muted">weekend</span>':agents.some(p=>onAt(r[p.name],480))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
     const pm=agents.some(p=>onAt(r[p.name],1290))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
     const three=n>=3?'<span class="pill on">yes</span>':'<span class="pill warn">only '+n+'</span>';
-    return `<tr><td>${esc(fmtDay(d))}</td><td class="num">${n}</td><td>${am}</td><td>${pm}</td><td>${three}</td></tr>`;}).join('');
+    const w=g=>g.filter(p=>shiftHours(r[p.name]).length).length;
+    return `<tr><td>${esc(fmtDay(d))}</td>${opsA.length?`<td class="num">${w(csA)}</td><td class="num">${w(opsA)}</td>`:''}<td class="num">${n}</td><td>${am}</td><td>${pm}</td><td>${three}</td></tr>`;}).join('');
 
   // ---- whatsapp tiles + table ----
   const tin=days.reduce((a,d)=>a+D.wa[d].in,0), tout=days.reduce((a,d)=>a+D.wa[d].out,0);
@@ -1255,30 +1255,28 @@ function renderBoard(){
   $('tkFilterNote').innerHTML=TK_VIEW==='all'?'':esc(TK_LABEL[TK_VIEW])+' · <a href="#tasks" id="tkClear">show all</a>';
   const clr=$('tkClear'); if(clr) clr.addEventListener('click',e=>{e.preventDefault(); TK_VIEW='all'; document.querySelectorAll('#tkTiles .tile.click').forEach(x=>x.classList.remove('on')); renderBoard();});
   const groups=[
-    {k:'todo',name:'To do',col:'#579bfc',f:t=>t.s==='Not Started'||!t.s},
-    {k:'doing',name:'Working on it',col:'#fdab3d',f:t=>t.s==='In Progress'},
-    {k:'wait',name:'Waiting',col:'#a25ddc',f:t=>/Waiting/.test(t.s||'')},
-    {k:'done',name:'Done, last 14 days',col:'#00c875',f:t=>t.s==='Completed'&&(dayOf(t.cl)||'')>=since14},
+    {k:'todo',name:'To do',col:'#9aa9a6',f:t=>t.s==='Not Started'||!t.s},
+    {k:'doing',name:'In progress',col:'#f0a23b',f:t=>t.s==='In Progress'},
+    {k:'wait',name:'Waiting',col:'#7c6fd6',f:t=>/Waiting/.test(t.s||'')},
+    {k:'done',name:'Done, last 14 days',col:'#2bb673',f:t=>t.s==='Completed'&&(dayOf(t.cl)||'')>=since14},
   ];
   if(!('done' in FOLD)) FOLD.done=true;
   const filtered=TK_VIEW!=='all';
-  const dueCell=t=>{ if(!t.due) return '<td class="due muted">–</td>'; const cls=t.s!=='Completed'&&t.due<now.day?'over':t.s!=='Completed'&&t.due===now.day?'today':''; const d=dparts(t.due); return `<td class="due ${cls}">${MON[d.getUTCMonth()]} ${d.getUTCDate()}${cls==='over'?' · overdue':cls==='today'?' · today':''}</td>`; };
+  const WAIT_ON={'Waiting for Provider':'Waiting on provider','Waiting for Customer':'Waiting on customer','Waiting for input/approval':'Needs approval'};
+  const dueTxt=t=>{ if(!t.due) return '<span class="tk-due">No due date</span>'; const done=t.s==='Completed'; const d=dparts(t.due), lab=MON[d.getUTCMonth()]+' '+d.getUTCDate();
+    if(!done&&t.due<now.day) return `<span class="tk-due over">Overdue · ${lab}</span>`; if(!done&&t.due===now.day) return '<span class="tk-due today">Today</span>'; return `<span class="tk-due">${lab}</span>`; };
   let html='';
   groups.forEach(g=>{
     const rows=T.filter(g.f).sort((a,b)=>(a.due||'9').localeCompare(b.due||'9'));
     if(filtered&&!rows.length) return;
-    const stc=cnt(rows,t=>t.s||'Not Started');
-    html+=`<div class="grp${FOLD[g.k]&&!filtered?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><span class="chev">▼</span>${esc(g.name)} <span class="n">${rows.length} task${rows.length===1?'':'s'}</span></button><div class="grp-b">`;
-    html+='<table class="btbl"><colgroup><col style="width:34%"><col style="width:13%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup><tr><th style="text-align:left;padding-left:12px">Task</th><th>Owner</th><th>Status</th><th>Due date</th><th>Priority</th><th>Type</th><th>Handover</th></tr>';
-    html+=rows.length?rows.map(t=>`<tr><td class="t">${recLink('task',t.id,t.sub||'(no subject)')}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}${t.bid||t.prov||t.wait?`<span class="tsub">${esc([t.bid?'Booking '+t.bid:'',t.prov?'Provider '+t.prov:'',t.wait?'Waiting on '+t.wait:''].filter(Boolean).join(' · '))}</span>`:''}</td>
-      <td><div class="ownc">${t.own?`<span class="av" style="background:${avCol(t.own)}" title="${esc(t.own)}">${esc(initials(t.own))}</span><span>${esc(t.own.split(' ')[0])}</span>`:'<span class="muted">–</span>'}</div></td>
-      <td class="lab" style="background:${ST_COL[t.s]||'#c4c4c4'}" title="${esc(t.s||'Not Started')}">${esc(t.s==='In Progress'?'Working on it':t.s==='Waiting for input/approval'?'Needs approval':(t.s||'Not Started').replace('Waiting for ','Waiting: '))}</td>
-      ${dueCell(t)}
-      <td class="lab" style="background:${PR_COL[t.pr]||'#c4c4c4'}">${esc(t.pr||'')}</td>
-      <td class="muted" style="padding:0 8px">${esc(t.type||'')}</td>
-      <td class="muted" style="padding:0 8px;font-size:12.5px">${esc(t.ho?t.ho+(t.hos?' · '+t.hos:''):'')}</td></tr>`).join(''):'<tr><td class="t muted" colspan="7">Nothing here.</td></tr>';
-    if(rows.length) html+=`<tr class="sum"><td></td><td></td><td><div class="bar100">${Object.entries(stc).map(([k,v])=>`<i title="${esc(k)}: ${v}" style="width:${v/rows.length*100}%;background:${ST_COL[k]||'#c4c4c4'}"></i>`).join('')}</div></td><td></td><td></td><td></td><td></td></tr>`;
-    html+='</table></div></div>';
+    html+=`<div class="grp${FOLD[g.k]&&!filtered?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><i class="dot"></i>${esc(g.name)}<span class="n">${rows.length}</span><span class="chev">▾</span></button><div class="grp-b">`;
+    html+=rows.length?rows.map(t=>{
+      const meta=[g.k==='wait'?WAIT_ON[t.s]||'':'', t.wait?'on '+t.wait:'', t.prov?t.prov:'', t.bid?'Booking '+t.bid:''].filter(Boolean).join(' · ');
+      const hi=/^High/.test(t.pr||'')?`<span class="tk-pr">${esc(t.pr)}</span>`:'';
+      return `<div class="tk"><div class="tk-main"><div class="tk-sub">${recLink('task',t.id,t.sub||'(no subject)')}${hi}${/^TEST/i.test(t.sub||'')?' <span class="pill">test</span>':''}</div>${meta?`<div class="tk-meta">${esc(meta)}</div>`:''}</div>
+        <div class="tk-side"><span class="tk-own">${t.own?`<span class="av" style="background:${avCol(t.own)}" title="${esc(t.own)}">${esc(initials(t.own))}</span>${esc(t.own.split(' ')[0])}`:'<span class="muted">No owner</span>'}</span>${dueTxt(t)}</div></div>`;
+    }).join(''):'<div class="tk muted" style="font-size:13px">Nothing here.</div>';
+    html+='</div></div>';
   });
   $('board').innerHTML=html||'<p class="muted">No tasks match.</p>';
   $('board').querySelectorAll('.grp-h').forEach(h=>h.addEventListener('click',()=>{const g=h.parentElement;FOLD[g.dataset.g]=!g.classList.contains('fold');g.classList.toggle('fold');}));
