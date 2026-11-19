@@ -435,9 +435,14 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
   <section data-panel="orders">
     <div class="tiles" id="opTiles"></div>
     <div class="card">
+      <h2>Orders from the Pawkit app</h2>
+      <p class="sub">Every order a customer places in the Pawkit app, with the services bought. Click an order number to open it in Zoho.</p>
+      <p class="sub filternote" id="opNote"></p>
+      <div class="tablewrap"><table id="aoTable"></table></div>
+    </div>
+    <div class="card" id="opCard" hidden>
       <h2>Order processing</h2>
       <p class="sub">From the Order Processing module in Zoho CRM: product and service orders, delivery and payment.</p>
-      <p class="sub filternote" id="opNote"></p>
       <div class="tablewrap"><table id="opTable"></table></div>
     </div>
   </section>
@@ -678,7 +683,7 @@ let DECIDE=null;
 const recLink=(kind,id,text)=>{ const b=((CFG&&CFG.links||{}).record||{})[kind]; return b&&id?`<a href="${esc(b+encodeURIComponent(id))}" target="_blank" rel="noopener" title="Open in Zoho">${esc(text)}</a>`:esc(text); };
 let WN_F='waiting', WN_SEG='cust', WN_ROWS=[];
 // ---- date filter for the Customer Service pages (each page remembers its own range) ----
-const CSF={whatsapp:{r:'day',d:null},tasks:{r:'all',d:null},complaints:{r:'all',d:null},orders:{r:'all',d:null},xero:{r:'all',d:null}};
+const CSF={whatsapp:{r:'day',d:null},tasks:{r:'all',d:null},complaints:{r:'all',d:null},orders:{r:'month',d:null},xero:{r:'all',d:null}};
 const CS_BY={whatsapp:'by message date',tasks:'tasks by due date',complaints:'by complaint date',orders:'by order date',xero:'invoices by visit date (stock is not dated)'};
 let CUR_PANEL='overview';
 function rangeOf(r,day){ const d=dparts(day);
@@ -981,14 +986,14 @@ function render(day){
       st(up7.length,'visits in the next 7 days','go:bookings:upcoming')],
       esc(MON[Number(mon.slice(5))-1]+' so far: '+m0(doneM.reduce((a,r)=>a+(r.amt||0),0))+' completed from '+doneM.length+' visits, base price'));
     // orders and inventory
-    const O=D.orders||[], oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s)), outAmt=O.reduce((a,o)=>a+(o.out||0),0);
+    const AO=(D.app_orders||[]).filter(o=>(o.c||'').slice(0,7)===mon), aoLive=AO.filter(o=>!['Cancelled','Refund'].includes(o.s)&&o.inv!=='Refunded'), aoAmt=aoLive.reduce((a,o)=>a+(o.amt||0),0);
     const sent=(D.inv||[]).filter(b=>b.s==='Completed'&&b.inv==='Sent'), items=D.items||[], inSt=items.filter(i=>(i.q||0)>0), low=inSt.filter(i=>i.q<=5);
     const od=card('orders','Orders and Xero','Orders and Inventory','go:orders',[
-      st(oOpen.length,'open orders','go:orders'),
-      st(m0(outAmt),'outstanding on orders','go:orders',outAmt?'warn':''),
+      st(AO.length,'app orders this month','go:orders'),
+      st(m0(aoAmt),'app order value, not cancelled','go:orders'),
       st(sent.length,'invoices sent, not paid','go:xero',sent.length?'warn':''),
       st(low.length,'items low on stock','go:xero',low.length?'warn':'')],
-      esc(inSt.length+' of '+items.length+' Xero items in stock · '+m0(sent.reduce((a,b)=>a+(b.amt||0),0))+' in unpaid invoices, last 30 days'+(O.length?'':' · no orders in Order Processing yet')));
+      esc(inSt.length+' of '+items.length+' Xero items in stock · '+m0(sent.reduce((a,b)=>a+(b.amt||0),0))+' in unpaid invoices, last 30 days'));
     $('ov').innerHTML=wf+cs+bk+od;
   }
 
@@ -1120,13 +1125,21 @@ function render(day){
   renderBoard();
 
   // ---- orders ----
-  const oR=csR('orders'), O=(D.orders||[]).filter(o=>oR.all||oR.has(dayOf(o.d||o.c))); const oOpen=O.filter(o=>!['Delivered','Cancelled','Returned'].includes(o.s));
-  const money=v=>v==null?'':'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
-  const unpaid=o=>['Not Invoiced','Invoiced','Partially Paid','Overdue'].includes(o.pay);
-  $('opTiles').innerHTML=tile('Orders',O.length,oR.all?'in Order Processing':oR.label,'op:all')+tile('Open',oOpen.length,'not delivered, cancelled or returned','op:open')+tile('Unpaid',O.filter(unpaid).length,'by payment status','op:unpaid')+tile('Outstanding',money(O.reduce((a,o)=>a+(o.out||0),0))||'$0','outstanding amount','op:out');
-  const opKey=(ACT_ON.op||'op:all').split(':')[1], OV=O.filter(o=>opKey==='open'?oOpen.includes(o):opKey==='unpaid'?unpaid(o):opKey==='out'?(o.out||0)>0:true);
-  $('opNote').innerHTML=opKey==='all'?'':esc(({open:'Open orders only',unpaid:'Unpaid orders only',out:'Orders with an outstanding amount only'})[opKey])+' · <a href="#orders" data-clear="op">show all</a>';
-  $('opTable').innerHTML=O.length?'<tr><th>Order</th><th>Date</th><th>Type</th><th>Status</th><th>Fulfilment</th><th>Payment</th><th>Delivery</th><th class="num">Total</th><th>Processed by</th></tr>'+OV.slice().sort((a,b)=>(b.d||b.c||'').localeCompare(a.d||a.c||'')).map(o=>`<tr><td>${esc(o.n)}</td><td>${esc(dayOf(o.d||o.c)?fmtDay(dayOf(o.d||o.c)):'')}</td><td>${esc(o.type||'')}</td><td>${stPill(o.s)}</td><td class="muted">${esc(o.ful||'')}</td><td>${esc(o.pay||'')}</td><td class="muted">${esc([o.dm,o.urg].filter(Boolean).join(' · '))}</td><td class="num">${money(o.tot)}</td><td>${esc(o.by||o.agent||'')}</td></tr>`).join(''):'<tr><td class="muted">No orders in the Order Processing module yet. This tab fills in as soon as orders are logged there.</td></tr>';
+  const oR=csR('orders'), money=v=>v==null?'':'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
+  const AO=(D.app_orders||[]).filter(o=>oR.all||oR.has(dayOf(o.c)));
+  const aoGone=o=>['Cancelled','Refund'].includes(o.s)||o.inv==='Refunded', aoPaid=o=>o.inv==='Paid'&&!aoGone(o), aoDue=o=>!aoGone(o)&&o.inv!=='Paid';
+  const aoSum=l=>money(l.reduce((a,o)=>a+(o.amt||0),0))||'$0', aoLive=AO.filter(o=>!aoGone(o));
+  $('opTiles').innerHTML=tile('App orders',AO.length,(oR.all?'all time':oR.label)+' · '+aoSum(aoLive)+' not cancelled','op:all')
+    +tile('Paid',AO.filter(aoPaid).length,aoSum(AO.filter(aoPaid))+' paid','op:paid')
+    +tile('Awaiting payment',AO.filter(aoDue).length,aoSum(AO.filter(aoDue))+' not marked paid yet','op:due')
+    +tile('Cancelled or refunded',AO.filter(aoGone).length,aoSum(AO.filter(aoGone))+' lost','op:gone');
+  const opKey=(ACT_ON.op||'op:all').split(':')[1], AV=AO.filter(o=>opKey==='paid'?aoPaid(o):opKey==='due'?aoDue(o):opKey==='gone'?aoGone(o):true);
+  $('opNote').innerHTML=(opKey==='all'?'':esc(({paid:'Paid orders only',due:'Orders awaiting payment only',gone:'Cancelled or refunded orders only'})[opKey])+' · <a href="#orders" data-clear="op">show all</a> · ')+esc(AV.length+' orders by the date they were placed');
+  const aoPill=o=>`<span class="pill ${o.s==='Completed'?'on':aoGone(o)?'':o.s==='Scheduled'?'brand':'warn'}">${esc(o.s||'No status')}</span>`;
+  $('aoTable').innerHTML=AV.length?'<tr><th>Order</th><th>Placed</th><th>Visit</th><th>Services bought</th><th>Provider</th><th>Status</th><th>Payment</th><th class="num">Amount</th></tr>'+AV.slice().sort((a,b)=>(b.c||'').localeCompare(a.c||'')).map(o=>`<tr><td>${recLink('booking',o.id,o.ref||o.code||'')}<div class="muted" style="font-size:12px">${esc(o.code||'')}</div></td><td style="white-space:nowrap">${esc(o.c?fmtDay(dayOf(o.c))+' '+o.c.slice(11,16):'')}</td><td style="white-space:nowrap">${esc(o.d?fmtDay(dayOf(o.d))+' '+o.d.slice(11,16):'')}</td><td>${esc(o.svc||o.cat||'')}</td><td>${esc(o.p||'')}</td><td>${aoPill(o)}</td><td>${esc(o.inv||'Not set')}<div class="muted" style="font-size:12px">${esc((o.pay||'').replace('Stripe_','Stripe · '))}</div></td><td class="num"><b>${money(o.amt)}</b></td></tr>`).join(''):'<tr><td class="muted">No app orders were placed in this period. Pick another date, or choose All.</td></tr>';
+  const O=(D.orders||[]).filter(o=>oR.all||oR.has(dayOf(o.d||o.c)));   // Zoho's Order Processing module: shown only once it has orders
+  $('opCard').hidden=!O.length;
+  $('opTable').innerHTML=O.length?'<tr><th>Order</th><th>Date</th><th>Type</th><th>Status</th><th>Fulfilment</th><th>Payment</th><th>Delivery</th><th class="num">Total</th><th>Processed by</th></tr>'+O.slice().sort((a,b)=>(b.d||b.c||'').localeCompare(a.d||a.c||'')).map(o=>`<tr><td>${esc(o.n)}</td><td>${esc(dayOf(o.d||o.c)?fmtDay(dayOf(o.d||o.c)):'')}</td><td>${esc(o.type||'')}</td><td>${stPill(o.s)}</td><td class="muted">${esc(o.ful||'')}</td><td>${esc(o.pay||'')}</td><td class="muted">${esc([o.dm,o.urg].filter(Boolean).join(' · '))}</td><td class="num">${money(o.tot)}</td><td>${esc(o.by||o.agent||'')}</td></tr>`).join(''):'';
 
   // ---- xero: invoices ----
   const xR=csR('xero'), done30=(D.inv||[]).filter(b=>b.s==='Completed'&&(xR.all||xR.has(dayOf(b.d))));

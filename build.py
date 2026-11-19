@@ -122,6 +122,7 @@ def main():
         "leave": leave,
         "tasks": raw.get("tasks", []),
         "orders": raw.get("orders", []),
+        "app_orders": raw.get("app_orders", []),
         "items": raw.get("items", []),
         "inv": raw.get("inv", []),
         "config": {k: v for k, v in cfg.items() if not k.startswith("_")},
