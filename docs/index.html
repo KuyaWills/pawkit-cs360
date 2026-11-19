@@ -799,7 +799,7 @@ function init(data){
   const sel=$('day');
   sel.innerHTML=days.slice().reverse().map(d=>`<option value="${d}">${fmtDay(d)}${d===today?' (today)':''}</option>`).join('');
   sel.value=days.includes(today)?today:days[days.length-1];
-  sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; render(sel.value);});
+  sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; SCHED_DAY=null; render(sel.value);});
   const TABS=[...document.querySelectorAll('#tabs button')];
   // Two main tabs are groups with sub-tabs. The old links (#schedule, #leave, #whatsapp, #tasks, #complaints)
   // open the matching sub-tab, and each group remembers the sub-tab last opened.
@@ -857,6 +857,7 @@ function showUpdated(){
   el.style.color=mins<=LV?'var(--good)':mins>60?'var(--warn)':'';
 }
 const ACT_ON={};
+let SCHED_DAY=null;  // date clicked in the Week schedule: the Coverage card shows it (null = the day picked at the top)
 let OFF_WK=null;   // Monday of the week shown in Rest days and time off
 let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null, LIVE_FAILED=false;
 async function getJSON(url,opts){
@@ -1026,10 +1027,14 @@ function render(day){
   const rdays=Object.keys(CFG.roster).sort();
   const wk=rdays.filter(d=>Math.abs(dparts(d)-dparts(day))<7*864e5);
   const weekDays=wk.length?wk:rdays.slice(-7);
-  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[weekDays.length-1])+'.';
-  $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===day?'today':''}">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
-    CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td class="${d===day?'today':''}"><span class="code ${esc(c)}">${esc(c||'–')}</span></td>`;}).join('')+'</tr>').join('')+
-    '<tr><th>Human agents on</th>'+weekDays.map(d=>`<th class="${d===day?'today':''}">${agents.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>';
+  const sd=SCHED_DAY&&CFG.roster[SCHED_DAY]&&weekDays.includes(SCHED_DAY)?SCHED_DAY:day, sRoster=CFG.roster[sd]||null, sToday=sd===now.day;
+  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[weekDays.length-1])+'. Click a date to see its coverage above.';
+  $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" role="button" tabindex="0" title="Show coverage for this date" style="cursor:pointer">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
+    CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer"><span class="code ${esc(c)}">${esc(c||'–')}</span></td>`;}).join('')+'</tr>').join('')+
+    '<tr><th>Human agents on</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer">${agents.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>';
+  if(!$('week').dataset.on){ $('week').dataset.on=1; const pick=e=>{ const c=e.target.closest('[data-sd]'); if(!c) return; if(e.type==='keydown'){ if(e.key!=='Enter'&&e.key!==' ') return; e.preventDefault(); }
+      SCHED_DAY=c.dataset.sd; render($('day').value); $('tlTitle').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'}); };
+    $('week').addEventListener('click',pick); $('week').addEventListener('keydown',pick); }
   $('codes').innerHTML='<tr><th>Code</th><th>Meaning</th><th>Hours</th></tr>'+Object.entries(CFG.shift_codes).map(([k,v])=>`<tr><td><span class="code ${k}">${k}</span></td><td>${esc(v.label)}</td><td class="muted">${esc(hoursText(k))}</td></tr>`).join('');
 
   // ---- leave ----
@@ -1083,13 +1088,13 @@ function render(day){
 
   // ---- schedule: timeline ----
   const T0=7*60, T1=23*60, pct=m=>((Math.min(Math.max(m,T0),T1)-T0)/(T1-T0)*100);
-  $('tlTitle').textContent='Coverage on '+fmtDay(day);
+  $('tlTitle').textContent='Coverage on '+fmtDay(sd)+(sd!==day?' · picked in the week schedule':'');
   let tl='<div class="tl"><div class="row"><div></div><div class="hours">';
   for(let h=7;h<=21;h+=2) tl+=`<span style="left:${pct(h*60)}%">${t12(String(h).padStart(2,'0')+':00')}</span>`;
   tl+='</div></div>';
-  const grid=()=>{let g='';for(let h=8;h<23;h++) g+=`<div class="gridl" style="left:${pct(h*60)}%"></div>`; if(isToday&&now.min>=T0&&now.min<=T1) g+=`<div class="nowl" style="left:${pct(now.min)}%" title="Now"></div>`; return g;};
+  const grid=()=>{let g='';for(let h=8;h<23;h++) g+=`<div class="gridl" style="left:${pct(h*60)}%"></div>`; if(sToday&&now.min>=T0&&now.min<=T1) g+=`<div class="nowl" style="left:${pct(now.min)}%" title="Now"></div>`; return g;};
   CFG.people.forEach(p=>{
-    const code=roster?roster[p.name]:null, hrs=code?shiftHours(code):[];
+    const code=sRoster?sRoster[p.name]:null, hrs=code?shiftHours(code):[];
     let bars='';
     if(hrs.length) bars=hrs.map(([a,b])=>`<div class="bar ${p.agent?'':'mgr'}" style="left:${pct(toMin(a))}%;width:${pct(toMin(b))-pct(toMin(a))}%" title="${esc(p.name)}: ${esc(t12(a))}–${esc(t12(b))}">${esc(code)} ${esc(t12(a))}–${esc(t12(b))}</div>`).join('');
     else if(code==='ON') bars=`<div class="bar unk" style="left:${pct(9*60)}%;width:${pct(18*60)-pct(9*60)}%">Working, hours not set</div>`;
@@ -1097,9 +1102,9 @@ function render(day){
     tl+=`<div class="row"><div class="name">${esc(p.name)}<small>${esc(p.role)}</small></div><div class="track">${grid()}${bars}</div></div>`;
   });
   tl+='<div class="row"><div class="name">Human agents on<small>each half hour</small></div><div class="track" style="display:flex;align-items:center"><div class="cov" style="width:100%">';
-  for(let m=T0;m<T1;m+=30){ const n=roster?agents.filter(p=>onAt(roster[p.name],m)).length:0; tl+=`<div class="c${Math.min(n,3)}" title="${t12(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'))}: ${n} on">${n}</div>`; }
+  for(let m=T0;m<T1;m+=30){ const n=sRoster?agents.filter(p=>onAt(sRoster[p.name],m)).length:0; tl+=`<div class="c${Math.min(n,3)}" title="${t12(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'))}: ${n} on">${n}</div>`; }
   tl+='</div></div></div></div>';
-  $('timeline').innerHTML=roster?tl:'<p class="muted">No schedule for this day in the tracker yet.</p>';
+  $('timeline').innerHTML=sRoster?tl:'<p class="muted">No schedule for this day in the tracker yet.</p>';
 
   // ---- schedule: week checks ----
   $('weekChecks').innerHTML='<tr><th>Day</th><th class="num">Agents</th><th>8am</th><th>9:30pm</th><th>3+ agents</th></tr>'+weekDays.map(d=>{
