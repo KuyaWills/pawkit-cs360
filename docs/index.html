@@ -574,7 +574,7 @@ const LIVE_SLOT=n=>'https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/d'+
 let PW=null;
 // Leave credits (D.leave_bal: Zoho module Leave_Balances minus time off asked on this page) gate the request form:
 // a request for more days than are left is blocked. Types without a credit (time off in lieu, other) are not checked.
-const LV_TRACKED=['Annual leave','Sick leave','Pet care leave','Childcare leave','Unpaid leave'];
+const LV_TRACKED=['Annual leave','Sick leave','Pet care leave','Childcare leave'];   // paid leave only: unpaid leave isn't shown or counted
 const fmtD=n=>{n=Math.round(n*100)/100; return n+(n===1?' day':' days');};
 function lvDays(w,f,t){ let n=0; if(!f) return 0; for(let d=dparts(f), end=dparts(t&&t>=f?t:f); d<=end; d=new Date(d.getTime()+864e5)){ if(((CFG.roster||{})[d.toISOString().slice(0,10)]||{})[w]!=='OFF') n++; } return n; }   // rest days in the schedule don't count
 function lvCredit(w,type){ const P=D&&D.leave_bal&&D.leave_bal.people&&D.leave_bal.people[w]; if(!P||!LV_TRACKED.includes(type)) return null; return P.find(x=>x.type===type)||{type,left:0,of:0,held:0,none:true}; }
