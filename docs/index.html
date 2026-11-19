@@ -142,6 +142,8 @@ section[data-panel].active{display:block}
 .tk-side{display:flex;align-items:center;gap:18px;flex-shrink:0;font-size:13px;color:var(--ink2)}
 .tk-own{display:inline-flex;align-items:center;gap:6px;min-width:96px}
 .tk-due{min-width:108px;text-align:right;color:var(--ink3)}
+.tk-meta a{color:var(--brand);font-weight:700;text-decoration:none}.tk-meta a:hover{text-decoration:underline}
+.tk-upd{font-size:12.5px;font-weight:700;color:var(--brand);text-decoration:none;white-space:nowrap}.tk-upd:hover{text-decoration:underline}
 .tk-due.over{color:var(--bad);font-weight:700}.tk-due.today{color:var(--warn);font-weight:700}
 .av{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;color:#fff;font-size:10.5px;font-weight:700}
 @media (max-width:640px){.tk{flex-direction:column;align-items:flex-start;gap:6px}.tk-side{gap:14px}.tk-due{min-width:0;text-align:left}.tk-own{min-width:0}}
@@ -554,12 +556,12 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <div class="tiles" id="cpTiles"></div>
     <div class="card">
       <h2>Complaints</h2>
-      <p class="sub">From the Complaints module in Zoho CRM, newest first. "Issue" and "Outcome" are short summaries of the description and resolution in Zoho; hover over them to read the original text.</p>
+      <p class="sub">From Zoho CRM, newest first. Each line is a short summary of the issue and its outcome; hover to read the original text, click the number to open it in Zoho.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
         <input id="cpSearch" type="search" placeholder="Search issue, provider or number" aria-label="Search complaints" style="flex:1;min-width:180px">
         <select id="cpFilter" aria-label="Filter complaints"><option value="all">All complaints</option><option value="open">Not closed</option><option value="30">Last 30 days</option><option value="late">Late arrival</option><option value="quality">Grooming or service quality</option><option value="noshow">No show</option><option value="refund">Refunds</option></select>
       </div>
-      <div class="tablewrap"><table id="comp"></table></div>
+      <div id="comp"></div>
     </div>
     <div class="two">
       <div class="card">
@@ -1213,6 +1215,7 @@ function renderStock(){
   $('xStock').innerHTML='<tr><th>Item</th><th>Code</th><th class="num">On hand</th><th class="num">Unit price</th></tr>'+(rows.length?rows.slice(0,400).map(i=>`<tr><td>${esc(i.n)}</td><td class="muted">${esc(i.code||'')}</td><td class="num">${(i.q||0)<=0?'<span class="pill bad">'+(i.q||0)+'</span>':i.q<=5?'<span class="pill warn">'+i.q+'</span>':i.q}</td><td class="num">${i.up!=null?'$'+i.up:''}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">No items match.</td></tr>');
 }
 
+const CP_FOLD={};
 function renderComplaints(){
   const now=sgNow(), since=addDays(now.day,-30), q=($('cpSearch').value||'').toLowerCase(), f=$('cpFilter').value;
   const SUM=CFG.complaint_summaries||{};
@@ -1231,10 +1234,20 @@ function renderComplaints(){
     return !q||[c.n,c.p,c.cat,c.o,sm.issue,sm.outcome,c.desc,c.res].join(' ').toLowerCase().includes(q);
   }).sort((a,b)=>cDay(b).localeCompare(cDay(a))||b.n.localeCompare(a.n));
   const st=c=>['Resolved','Closed'].includes(c.s)?`<span class="pill">${esc(c.s)}</span>`:`<span class="pill bad">${esc(c.s||'No status')}</span>`;
-  const cBase=((CFG.links||{}).record||{}).complaint, upd=c=>cBase&&c.id?`<a class="btnlink" style="padding:5px 12px;font-size:13px;white-space:nowrap" href="${esc(cBase+encodeURIComponent(c.id)+'/edit')}" target="_blank" rel="noopener" title="Open this complaint in Zoho to update its status, owner or resolution">Update</a>`:'';
-  $('comp').innerHTML='<tr><th>No.</th><th>Date</th><th>Provider</th><th>Category</th><th>Owner</th><th style="min-width:260px">Issue</th><th style="min-width:200px">Outcome</th><th>Status</th><th></th></tr>'+(rows.length?rows.map(c=>{
-    const sm=SUM[c.n]||{}; const issue=sm.issue||short(c.desc)||'No description in Zoho'; const out=sm.outcome||short(c.res)||'No outcome recorded';
-    return `<tr><td style="white-space:nowrap">${recLink('complaint',c.id,c.n)}</td><td style="white-space:nowrap">${cDay(c)?esc(fmtDay(cDay(c))):''}</td><td>${esc(c.p||'')}</td><td class="muted">${esc(c.cat||'No category')}</td><td style="white-space:nowrap">${esc(c.o||'')}</td><td title="${esc(c.desc||'')}">${esc(issue)}${sm.issue?'':' <span class="pill">from Zoho text</span>'}</td><td class="muted" title="${esc(c.res||'')}">${esc(out)}${c.rf?' <span class="pill warn">refund $'+esc(c.ra||'')+'</span>':''}</td><td>${st(c)}</td><td>${upd(c)}</td></tr>`;}).join(''):'<tr><td colspan="9" class="muted">No complaints match.</td></tr>');
+  const cBase=((CFG.links||{}).record||{}).complaint, upd=c=>cBase&&c.id?`<a class="tk-upd" href="${esc(cBase+encodeURIComponent(c.id)+'/edit')}" target="_blank" rel="noopener" title="Open this complaint in Zoho to update its status, owner or resolution">Update</a>`:'';
+  const grp=[{k:'open',name:'Not closed',col:'#e2445c',f:c=>!['Resolved','Closed'].includes(c.s)},{k:'closed',name:'Closed',col:'#2bb673',f:c=>['Resolved','Closed'].includes(c.s)}];
+  let html='';
+  grp.forEach(g=>{ const rs=rows.filter(g.f); if(!rs.length) return;
+    html+=`<div class="grp${CP_FOLD[g.k]?' fold':''}" style="--gc:${g.col}" data-g="${g.k}"><button class="grp-h" type="button"><i class="dot"></i>${esc(g.name)}<span class="n">${rs.length}</span><span class="chev">▾</span></button><div class="grp-b">`;
+    html+=rs.map(c=>{
+      const sm=SUM[c.n]||{}; const issue=sm.issue||short(c.desc)||'No description in Zoho'; const out=sm.outcome||short(c.res)||'';
+      const meta=[c.p||'',c.cat||'No category',g.k==='open'?(c.s||'No status'):''].filter(Boolean).map(esc).join(' · ');
+      return `<div class="tk"><div class="tk-main"><div class="tk-sub" title="${esc(c.desc||'')}">${esc(issue)}${c.rf?`<span class="tk-pr">Refund $${esc(c.ra||'')}</span>`:''}</div>
+        <div class="tk-meta">${recLink('complaint',c.id,c.n)} · ${meta}</div>${out?`<div class="tk-meta" title="${esc(c.res||'')}">Outcome: ${esc(out)}</div>`:''}</div>
+        <div class="tk-side"><span class="tk-own">${c.o?`<span class="av" style="background:${avCol(c.o)}" title="${esc(c.o)}">${esc(initials(c.o))}</span>${esc(c.o.split(' ')[0])}`:'<span class="muted">No owner</span>'}</span><span class="tk-due">${cDay(c)?esc(fmtDay(cDay(c))):''}</span>${upd(c)}</div></div>`;
+    }).join('')+'</div></div>'; });
+  $('comp').innerHTML=html||'<p class="muted">No complaints match.</p>';
+  $('comp').querySelectorAll('.grp-h').forEach(h=>h.addEventListener('click',()=>{const g=h.parentElement;CP_FOLD[g.dataset.g]=!g.classList.contains('fold');g.classList.toggle('fold');}));
 }
 
 const ST_COL={'Not Started':'#c4c4c4','In Progress':'#fdab3d','Waiting for Provider':'#a25ddc','Waiting for Customer':'#579bfc','Waiting for input/approval':'#e2445c','Completed':'#00c875','Cancelled':'#797e93','Deferred':'#797e93'};
