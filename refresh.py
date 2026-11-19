@@ -431,8 +431,8 @@ def main():
     app_orders = [{"id": o.get("id"), "ref": o.get("Name"), "code": o.get("Booking_Code"), "c": o.get("Created_Time"), "d": o.get("Date_Time"),
                    "s": o.get("Booking_Status"), "cat": o.get("Service_Category"), "svc": " ".join((o.get("Service_Breakdown") or "").split())[:400],
                    "p": o.get("Partner_Name.Name"), "inv": o.get("Invoice_Status"), "pay": o.get("Payment_Method"), "amt": o.get("Base_Price"),
-                   "pets": o.get("Number_of_Pets")}
-                  for o in z.all("select Name, Booking_Code, Created_Time, Date_Time, Booking_Status, Service_Category, Service_Breakdown, Partner_Name.Name, Invoice_Status, Payment_Method, Base_Price, Number_of_Pets from Booking where Booking_Code is not null")]
+                   "pets": o.get("Number_of_Pets"), "who": o.get("Pet_Owner.Name") or o.get("Customer_Clean_Name")}
+                  for o in z.all("select Name, Booking_Code, Created_Time, Date_Time, Booking_Status, Service_Category, Service_Breakdown, Pet_Owner.Name, Customer_Clean_Name, Partner_Name.Name, Invoice_Status, Payment_Method, Base_Price, Number_of_Pets from Booking where Booking_Code is not null")]
 
     items = [{"n": i.get("Name"), "code": i.get("Item_Code"), "q": i.get("Qty_On_Hand"), "r": i.get("Reserved_Qty"),
               "up": i.get("Unit_Price"), "cp": i.get("Cost_Price"), "sync": i.get("Last_Synced")}
