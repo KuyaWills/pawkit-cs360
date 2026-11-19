@@ -73,6 +73,7 @@ def main():
         "orders": raw.get("orders", []),
         "items": raw.get("items", []),
         "inv": raw.get("inv", []),
+        "refunds": raw.get("refunds"),
         "config": {k: v for k, v in cfg.items() if not k.startswith("_")},
         "payboy_synced": pb.get("synced"),
     }
