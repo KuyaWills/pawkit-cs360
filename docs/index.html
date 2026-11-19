@@ -568,6 +568,21 @@ const LIVE_API='https://api.github.com/repos/pawslyOps/pawkit-cs360/contents/dat
 const LIVE_URL='https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/data/data.json';
 const LIVE_SLOT=n=>'https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/d'+n+'/data.json';   // rotating copies, see fetchNext          // fallback: cached up to 5 minutes
 let PW=null;
+// Payboy balances (D.leave_bal, copied daily) gate the request form: no balance left = the request can't be sent.
+// Form type -> Payboy leave type. Types not listed (time off in lieu, other) are not checked.
+const LV_MAP={'Annual leave':'Annual Leave','Sick leave':'Outpatient Leave','Unpaid leave':'Unpaid Leave'};
+function balCheck(w,type,f,t){
+  const LB=D&&D.leave_bal, P=LB&&LB.people&&LB.people[w], pt=LV_MAP[type];
+  if(!P||!pt) return '';   // person not in Payboy, no copy yet, or a type Payboy doesn't track
+  const label=type.toLowerCase(), b=P.find(x=>x.type===pt);
+  if(!b) return 'You have no '+label+' in Payboy, so this request can\'t be sent. Choose another type, or talk to Vince.';
+  const m=/(\d+(?:\.\d+)?)\s*days?/.exec(b.left), h=/(\d+(?:\.\d+)?)\s*hrs?/.exec(b.left), days=m?+m[1]:0, hrs=h?+h[1]:0;
+  if(days<=0&&hrs<=0) return 'You have no '+label+' left in Payboy (0 of '+b.of+'). This request can\'t be sent.';
+  if(!f) return '';
+  let n=0; for(let d=dparts(f), end=dparts(t&&t>=f?t:f); d<=end; d=new Date(d.getTime()+864e5)){ if(((CFG.roster||{})[d.toISOString().slice(0,10)]||{})[w]!=='OFF') n++; }   // rest days in the schedule don't count
+  if(n>days+(hrs>0?1:0)) return 'Not enough '+label+' left: you asked for '+n+(n===1?' day':' days')+' but have '+b.left+' left in Payboy.';
+  return '';
+}
 const store={get(){try{return localStorage.getItem(KEY)}catch(e){return null}},set(v){try{localStorage.setItem(KEY,v)}catch(e){}},del(){try{localStorage.removeItem(KEY)}catch(e){}}};
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 
@@ -799,6 +814,7 @@ function init(data){
   $('lvForm').addEventListener('submit',e=>{ const f=$('lvFrom').value, t=$('lvTo').value||f, w=$('lvWho').value, err=$('lvErr'); err.textContent='';
     if(!w||!f){ e.preventDefault(); err.textContent='Choose your name and the dates.'; return; }
     if(t<f){ e.preventDefault(); err.textContent='The last day is before the first day.'; return; }
+    { const bm=balCheck(w,$('lvType').value,f,t); if(bm){ e.preventDefault(); err.textContent=bm; return; } }
     if($('lvType').value==='Sick leave'){ const fl=$('lvDoc').files[0]; if(!fl){ e.preventDefault(); err.textContent='Attach the medical document (a photo or PDF) for sick leave.'; return; } if(fl.size>10*1024*1024){ e.preventDefault(); err.textContent='That file is over 10 MB. Attach a smaller photo or PDF.'; return; } }
     const z=d=>{const x=dparts(d);return MON[x.getUTCMonth()]+' '+x.getUTCDate()+', '+x.getUTCFullYear();};
     $('lvFromZ').value=z(f); $('lvToZ').value=z(t); $('lvName').value=(w+' - '+$('lvType').value+' - '+z(f)).slice(0,110); }); ['ctKind','ctMin'].forEach(i=>$(i).addEventListener('change',renderContacts)); $('ctSearch').addEventListener('input',renderContacts); document.querySelectorAll('#bkRange button').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.r))); $('bkDate').addEventListener('change',e=>{if(e.target.value){BK_DAY=e.target.value; renderBookings(BK_DAY);}}); $('bkPrev').addEventListener('click',()=>bkStep(-1)); $('bkNext').addEventListener('click',()=>bkStep(1)); $('bkToday').addEventListener('click',()=>{BK_DAY=sgNow().day; renderBookings(BK_DAY);}); $('tkSearch').addEventListener('input',renderBoard); $('tkOwner').addEventListener('change',renderBoard); $('cpFilter').addEventListener('change',()=>{renderComplaints(); document.querySelectorAll('#cpTiles .tile.click').forEach(x=>x.classList.toggle('on',x.dataset.f===$('cpFilter').value));}); $('xFilter').addEventListener('change',renderStock);
@@ -1009,7 +1025,8 @@ function render(day){
     $('lbNote').innerHTML=LB?'Copied from Payboy '+esc(fmtDay(dayOf(LB.synced)))+' '+esc((LB.synced.split('T')[1]||'').slice(0,5))+'. Shown as days left, out of the allowance for the year. Time off approved on this page only comes off once it is also entered in Payboy.'+(lbOld?' <span class="pill warn">not updated for over a day</span>':''):'Not copied from Payboy yet.';
     $('lvBal').innerHTML=LB?'<tr><th>Name</th>'+lbTypes.map(t=>`<th>${esc(t.replace(/ Leave$/,''))}</th>`).join('')+'</tr>'+CFG.people.map(p=>{const b=LBP[p.name];return '<tr><td>'+esc(p.name)+'</td>'+(b?lbTypes.map(t=>{const x=b.find(y=>y.type===t);return '<td>'+(x?`<b>${esc(x.left)}</b> <span class="muted">of ${esc(x.of)}</span>`:'<span class="muted">–</span>')+'</td>';}).join(''):`<td class="muted" colspan="${lbTypes.length}">Not in Payboy</td>`)+'</tr>';}).join(''):'';
     const lbWho=()=>{const b=LBP[$('lvWho').value]; $('lvBalWho').innerHTML=b&&b.length?'Days left in Payboy: '+b.filter(x=>!/^0 days?$/.test(x.of)).map(x=>esc(x.type.replace(/ Leave$/,''))+' <b>'+esc(x.left)+'</b>').join(' · '):'';};
-    if(!$('lvWho').dataset.lb){ $('lvWho').dataset.lb=1; $('lvWho').addEventListener('change',lbWho); } lbWho();
+    const lbLive=()=>{ $('lvErr').textContent=$('lvWho').value?balCheck($('lvWho').value,$('lvType').value,$('lvFrom').value,$('lvTo').value||$('lvFrom').value):''; };
+    if(!$('lvWho').dataset.lb){ $('lvWho').dataset.lb=1; $('lvWho').addEventListener('change',lbWho); ['lvWho','lvType','lvFrom','lvTo'].forEach(i=>$(i).addEventListener('change',()=>lbLive())); } lbWho();
     const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.map(p=>`<option>${esc(p.name)}</option>`).join('');
     if(!$('lvFrom').min){ $('lvFrom').min=addDays(td,-14); $('lvTo').min=addDays(td,-14); }
   }
