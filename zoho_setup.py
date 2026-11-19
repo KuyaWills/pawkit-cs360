@@ -14,6 +14,7 @@ import glob, json, os, re, subprocess, sys, time, urllib.error, urllib.parse, ur
 OUT = os.path.expanduser("~/.config/pawkit-cs360/zoho.json")
 DL = os.environ.get("ZOHO_SETUP_DIR") or os.path.expanduser("~/Downloads")
 WAIT = int(os.environ.get("ZOHO_SETUP_WAIT", "540"))
+NEED = ["ZohoCRM.coql.READ", "ZohoCRM.modules.READ", "ZohoCRM.users.READ", "ZohoSheet.dataAPI.READ"]
 SHAPES = {
     "code": r"1000\.[0-9a-f]{20,}\.[0-9a-f]{20,}",
     "cid": r"1000\.[A-Z0-9]{20,}",
@@ -71,6 +72,9 @@ def exchange(got):
         return None, type(e).__name__
     if "refresh_token" not in j:
         return None, str(j.get("error", "no refresh token"))
+    missing = [x for x in NEED if x not in (j.get("scope") or "").replace(",", " ").split()]
+    if missing:   # saving this would break the dashboard: keep the sign-in that works
+        return None, "the code was made without: " + ", ".join(missing)
     return j, None
 
 
@@ -81,6 +85,10 @@ def save(got, j):
         json.dump({"client_id": got["cid"], "client_secret": got["sec"], "refresh_token": j["refresh_token"],
                    "api_domain": j.get("api_domain", "https://www.zohoapis.com"),
                    "accounts": "https://accounts.zoho.com"}, f)
+    try:   # the short-lived token kept by the refresh was made with the old access: drop it
+        os.remove(os.path.join(os.path.dirname(OUT), "zoho_token.json"))
+    except OSError:
+        pass
 
 
 def main():
