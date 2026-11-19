@@ -1053,7 +1053,7 @@ function render(day){
     // ---- leave credits (Zoho Leave Balances minus time off asked on this page) ----
     const LB=D.leave_bal, LBP=(LB&&LB.people)||{};
     $('lbNote').innerHTML=LB?'Days left of the allowance for the year. Approved time off is taken off automatically; time off waiting for approval is shown as held. Credits are kept in Zoho (Leave Balances); to correct one, edit its Opening Balance and Opening Date there.':'Leave credits appear after the next data refresh.';
-    $('lvBal').innerHTML=LB?'<tr><th>Name</th>'+LV_TRACKED.map(t=>`<th>${esc(t.replace(/ leave$/,''))}</th>`).join('')+'</tr>'+CFG.people.map(p=>{const b=LBP[p.name];return '<tr><td>'+esc(p.name)+'</td>'+(b?LV_TRACKED.map(t=>{const x=b.find(y=>y.type===t);return '<td>'+(x?`<b>${esc(fmtD(x.left))}</b> <span class="muted">of ${esc(x.of)}</span>`+(x.held?` <span class="pill warn">${esc(fmtD(x.held))} held</span>`:''):'<span class="muted">–</span>')+'</td>';}).join(''):`<td class="muted" colspan="${LV_TRACKED.length}">No credits set up yet</td>`)+'</tr>';}).join(''):'';
+    $('lvBal').innerHTML=LB?'<tr><th>Name</th>'+LV_TRACKED.map(t=>`<th>${esc(t.replace(/ leave$/,''))}</th>`).join('')+'</tr>'+CFG.people.filter(p=>!p.sched_only).map(p=>{const b=LBP[p.name];return '<tr><td>'+esc(p.name)+'</td>'+(b?LV_TRACKED.map(t=>{const x=b.find(y=>y.type===t);return '<td>'+(x?`<b>${esc(fmtD(x.left))}</b> <span class="muted">of ${esc(x.of)}</span>`+(x.held?` <span class="pill warn">${esc(fmtD(x.held))} held</span>`:''):'<span class="muted">–</span>')+'</td>';}).join(''):`<td class="muted" colspan="${LV_TRACKED.length}">No credits set up yet</td>`)+'</tr>';}).join(''):'';
     const lbWho=()=>{ const w=$('lvWho').value, ty=$('lvType').value, box=$('lvBalWho'); box.classList.remove('bad','muted');
       if(!w){ box.textContent='Choose your name'; box.classList.add('muted'); return; }
       const b=lvCredit(w,ty);
@@ -1063,7 +1063,7 @@ function render(day){
       if(avail<=0) box.classList.add('bad'); };
     const lbLive=()=>{ lbWho(); $('lvErr').textContent=$('lvWho').value?balCheck($('lvWho').value,$('lvType').value,$('lvFrom').value,$('lvTo').value||$('lvFrom').value):''; };
     if(!$('lvWho').dataset.lb){ $('lvWho').dataset.lb=1; ['lvWho','lvType','lvFrom','lvTo'].forEach(i=>$(i).addEventListener('change',()=>lbLive())); } lbWho();
-    const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.map(p=>`<option>${esc(p.name)}</option>`).join('');
+    const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.filter(p=>!p.sched_only).map(p=>`<option>${esc(p.name)}</option>`).join('');
     if(!$('lvFrom').min){ $('lvFrom').min=addDays(td,-14); $('lvTo').min=addDays(td,-14); }
   }
 
