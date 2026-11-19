@@ -99,6 +99,15 @@ URGENT_WORDS = ("urgent", "emergency", "asap", "immediately", "bleeding", "blood
 CLOSERS = {"ok", "okay", "okie", "k", "kk", "thanks", "thank", "you", "u", "so", "much", "very", "ty", "tq", "thx", "noted", "great", "sure",
            "alright", "got", "it", "will", "do", "no", "problem", "np", "yes", "yup", "yep", "ya", "yeah", "see", "bye", "welcome", "nice",
            "good", "perfect", "cool", "and", "for", "the", "your", "help", "lah", "la", "have", "a", "day", "night", "appreciate", "appreciated"}
+AUTO_TEXT = "thank you for contacting pawkit"   # WOZTELL's automatic greeting ("Hi there! Thank you for contacting Pawkit ...")
+
+
+def is_auto(data):
+    try:
+        text = str((json.loads(data or "{}") or {}).get("text") or "")
+    except (ValueError, AttributeError):
+        text = str(data or "")
+    return AUTO_TEXT in text.lower()
 
 
 def whatsapp_status(z, now):
@@ -128,7 +137,9 @@ def whatsapp_status(z, now):
         if (r.get(W + "Channel_Type") or "whatsapp-cloud") != "whatsapp-cloud":   # Instagram messages and comments are not WhatsApp chats
             continue
         key = r.get(W + "Member_Id") or (r.get(W + "From") if d == "In" else r.get(W + "To"))
-        c = conv.setdefault(key, {"pend": [], "name": None, "tel": None, "ins": 0, "waits": [], "last_in": None})
+        c = conv.setdefault(key, {"pend": [], "name": None, "tel": None, "ins": 0, "waits": [], "last_in": None, "auto": 0, "auto_pend": False})
+        if not c["tel"]:
+            c["tel"] = "".join(ch for ch in (r.get(W + "From") if d == "In" else r.get(W + "To")) or "" if ch.isdigit())
         if d == "In":
             text = ""
             if typ == "TEXT":
@@ -146,7 +157,12 @@ def whatsapp_status(z, now):
             c["ins"] += 1; c["last_in"] = t
             c["tel"] = "".join(ch for ch in (r.get(W + "From") or "") if ch.isdigit())
             c["name"] = r.get(W + "Lead.Full_Name") or c["name"]
+        elif typ != "TEMPLATE" and is_auto(r.get(W + "Message_Data")):   # the auto-greeting is not a human reply
+            c["auto"] += 1
+            if c["pend"]:
+                c["auto_pend"] = True
         elif typ != "TEMPLATE":            # templates are reminders and broadcasts, not replies
+            c["auto_pend"] = False
             if c["pend"]:
                 c["waits"].append((datetime.fromisoformat(t) - datetime.fromisoformat(c["pend"][0][0])).total_seconds() / 60)
             c["pend"] = []
@@ -168,14 +184,17 @@ def whatsapp_status(z, now):
     provs = {k: v for k, v in (pc.get("p") or {}).items() if len(k) == 8}
     today = now.date().isoformat()
     out = {"answered": 0, "convs": 0, "waiting": [], "urgent_after": URGENT_AFTER_MIN, "window_h": 48,
-           "seg": {"cust": {"convs": 0, "answered": 0}, "prov": {"convs": 0, "answered": 0}}}
+           "seg": {"cust": {"convs": 0, "answered": 0, "auto": 0, "auto_msgs": 0}, "prov": {"convs": 0, "answered": 0, "auto": 0, "auto_msgs": 0}}}
     waits_today = []
     for c in conv.values():
+        pname = provs.get((c["tel"] or "")[-8:])
+        seg = out["seg"]["prov" if pname else "cust"]
+        if c["auto"]:   # chats that got the automatic greeting, even when a person replied too or only a reaction set it off
+            seg["auto"] += 1
+            seg["auto_msgs"] += c["auto"]
         if not c["ins"]:
             continue
         out["convs"] += 1
-        pname = provs.get((c["tel"] or "")[-8:])
-        seg = out["seg"]["prov" if pname else "cust"]
         seg["convs"] += 1
         pend = c["pend"]
         # a closing "thanks / ok / emoji" needs no reply
@@ -196,6 +215,7 @@ def whatsapp_status(z, now):
                 name = None
             out["waiting"].append({"name": name, "tel": c["tel"], "since": pend[0][0], "mins": mins, "n": len(pend),
                                    "urgent": bool(word) or mins >= URGENT_AFTER_MIN, "word": bool(word), "prov": bool(pname),
+                                   "auto": c["auto_pend"],
                                    "msgs": [{"t": p[0], "x": p[2][:1200]} for p in pend[-8:]]})
             if pname:
                 out["waiting"][-1]["name"] = pname
