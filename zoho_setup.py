@@ -95,6 +95,13 @@ def main():
     start = time.time() - 2
     got, seen, used_clip = {}, set(), False
     last_clip = clip()  # whatever is on the clipboard now is stale: ignore it
+    try:   # a renewal: the Client ID and Secret are already saved, so only a new code is needed (DOWNLOAD or the code's COPY button)
+        with open(OUT) as f:
+            old = json.load(f)
+        if old.get("client_id") and old.get("client_secret"):
+            got.update(cid=old["client_id"], sec=old["client_secret"])
+    except (OSError, ValueError):
+        pass
     try:
         os.listdir(DL)
     except OSError:

@@ -7,7 +7,7 @@ WhatsApp counts for older days are cached in raw/wa_cache.json; today and yester
 are re-counted every run, older days once an hour, to keep API use low.
 """
 import hmac
-import calendar, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import calendar, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -371,7 +371,7 @@ def sheet_roster(z):
         if not roster:
             raise ValueError("no week tabs found")
         cache = {"roster": roster, "read": time.time()}
-    except (urllib.error.URLError, ValueError, KeyError, TypeError, IndexError, OSError) as e:
+    except Exception as e:   # the schedule is an extra: nothing here may stop the rest of the update
         detail = e.read()[:120].decode("utf-8", "replace") if isinstance(e, urllib.error.HTTPError) else str(e)[:120]
         print("WARNING schedule sheet could not be read (%s %s); using the last copy" % (type(e).__name__, detail))
         cache["retry_after"] = time.time() + 600
