@@ -485,6 +485,11 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
       <div class="tablewrap"><table id="lvAll"></table></div>
     </details>
     <div class="card">
+      <h2>Leave balances</h2>
+      <p class="sub" id="lbNote"></p>
+      <div class="tablewrap"><table id="lvBal"></table></div>
+    </div>
+    <div class="card">
       <h2>Rest days and time off this week</h2>
       <p class="sub">Rest days from the schedule tracker, with approved time off added.</p>
       <div class="tablewrap"><table id="offWeek"></table></div>
@@ -509,6 +514,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
           <input type="hidden" name="COBJ24CF52" id="lvToZ">
           <input type="text" name="aG9uZXlwb3Q" value="" style="display:none" tabindex="-1" autocomplete="off">
           <label>Who<select name="COBJ24CF1" id="lvWho" required><option value="">Choose your name</option></select></label>
+          <p class="sub wide" id="lvBalWho" style="margin:0"></p>
           <label>Type<select name="COBJ24CF2" id="lvType" required><option>Annual leave</option><option>Sick leave</option><option>Time off in lieu</option><option>Unpaid leave</option><option>Other</option></select></label>
           <label>From<input type="date" id="lvFrom" required></label>
           <label>To<input type="date" id="lvTo" required></label>
@@ -997,6 +1003,13 @@ function render(day){
     $('lvNote').innerHTML=k==='all'?'':'<a href="#leave" data-clear="lv">show all requests</a>';
     const pill=st=>`<span class="pill ${st==='Approved'?'on':st==='Rejected'?'bad':st==='Pending'?'warn':''}">${esc(st)}</span>`;
     $('lvAll').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
+    // ---- leave balances (copied from Payboy once a day) ----
+    const LB=D.leave_bal, LBP=(LB&&LB.people)||{}, lbTypes=[...new Set(Object.values(LBP).flat().map(b=>b.type))];
+    const lbOld=LB&&LB.synced&&(Date.now()-Date.parse(LB.synced))>36*36e5;
+    $('lbNote').innerHTML=LB?'Copied from Payboy '+esc(fmtDay(dayOf(LB.synced)))+' '+esc((LB.synced.split('T')[1]||'').slice(0,5))+'. Shown as days left, out of the allowance for the year. Time off approved on this page only comes off once it is also entered in Payboy.'+(lbOld?' <span class="pill warn">not updated for over a day</span>':''):'Not copied from Payboy yet.';
+    $('lvBal').innerHTML=LB?'<tr><th>Name</th>'+lbTypes.map(t=>`<th>${esc(t.replace(/ Leave$/,''))}</th>`).join('')+'</tr>'+CFG.people.map(p=>{const b=LBP[p.name];return '<tr><td>'+esc(p.name)+'</td>'+(b?lbTypes.map(t=>{const x=b.find(y=>y.type===t);return '<td>'+(x?`<b>${esc(x.left)}</b> <span class="muted">of ${esc(x.of)}</span>`:'<span class="muted">–</span>')+'</td>';}).join(''):`<td class="muted" colspan="${lbTypes.length}">Not in Payboy</td>`)+'</tr>';}).join(''):'';
+    const lbWho=()=>{const b=LBP[$('lvWho').value]; $('lvBalWho').innerHTML=b&&b.length?'Days left in Payboy: '+b.filter(x=>!/^0 days?$/.test(x.of)).map(x=>esc(x.type.replace(/ Leave$/,''))+' <b>'+esc(x.left)+'</b>').join(' · '):'';};
+    if(!$('lvWho').dataset.lb){ $('lvWho').dataset.lb=1; $('lvWho').addEventListener('change',lbWho); } lbWho();
     const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.map(p=>`<option>${esc(p.name)}</option>`).join('');
     if(!$('lvFrom').min){ $('lvFrom').min=addDays(td,-14); $('lvTo').min=addDays(td,-14); }
   }

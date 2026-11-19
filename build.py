@@ -48,6 +48,11 @@ def main():
         leave = (leave or []) + [{"id": "pb%d" % i, "name": r["name"], "type": r["type"], "from": r["from"], "to": r["to"], "status": "Approved",
                                   "note": r.get("note"), "by": "Payboy", "src": "Payboy", "cover": None, "asked": None, "when": None}
                                  for i, r in enumerate(pb["rows"])]
+    # leave balances copied once a day from Payboy (payboy_balances.py writes this private file)
+    try:
+        leave_bal = json.load(open(os.path.expanduser("~/.config/pawkit-cs360/payboy_balances.json")))
+    except (OSError, ValueError):
+        leave_bal = None
     # running number of this update (kept in raw/seq.txt); it picks the rotating branch the update is published to
     seq_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw", "seq.txt")
     try:
@@ -75,6 +80,7 @@ def main():
         "inv": raw.get("inv", []),
         "config": {k: v for k, v in cfg.items() if not k.startswith("_")},
         "payboy_synced": pb.get("synced"),
+        "leave_bal": leave_bal,
     }
     plain = json.dumps(payload, separators=(",", ":")).encode()
     salt, iv = os.urandom(16), os.urandom(12)
