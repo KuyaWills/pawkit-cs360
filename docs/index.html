@@ -419,9 +419,20 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
   <!-- TASKS -->
   <section data-panel="tasks">
     <div class="tiles" id="tkTiles"></div>
+    <p style="margin:0 4px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><a class="btnlink" id="tkTracker" href="#tasks" target="_blank" rel="noopener">Open the Task Tracker ›</a><span class="sub" style="margin:0">Work your tasks in the Task Tracker sheet, not in Zoho CRM. Changes sync to the CRM, and show here, within a minute or two.</span></p>
+    <details class="card fold" id="tkVideo">
+      <summary><h2>How to use the Task Tracker (1½-minute video)</h2><span class="foldhint"></span></summary>
+      <p class="sub">For CS agents: filtering your tasks, changing status, the red required cells and Status Needs column, picking providers from the list, and adding a new task. Screens use demo data.</p>
+      <video controls playsinline preload="none" poster="task-tracker-training.jpg" src="task-tracker-training.mp4?v=1" style="width:100%;max-width:880px;aspect-ratio:16/9;border-radius:10px;background:#000;display:block"></video>
+      <ul class="sub" style="margin:12px 0 0;padding-left:1.2em">
+        <li>Change Status from the dropdown. Waiting for Customer, Waiting for Provider and In Progress unlock only when their fields are filled.</li>
+        <li>Pick providers from the dropdown only. Typed names are rejected.</li>
+        <li>Never edit the grey columns or delete a row. Close a task by setting Status to Completed or Cancelled.</li>
+      </ul>
+    </details>
     <div class="card board-card">
       <div class="board-head">
-        <div><h2>Tasks board</h2><p class="sub" style="margin:0">Tasks from Zoho CRM, grouped by status. Click a tile above to filter, or a group to fold it.</p><p class="sub" id="tkFilterNote" style="margin:4px 0 0;font-weight:700;color:var(--brand)"></p></div>
+        <div><h2>Tasks board</h2><p class="sub" style="margin:0">The same tasks as the Task Tracker and Zoho CRM, grouped by status. Click a tile above to filter, or a group to fold it.</p><p class="sub" id="tkFilterNote" style="margin:4px 0 0;font-weight:700;color:var(--brand)"></p></div>
         <div class="board-tools">
           <input id="tkSearch" type="search" placeholder="Search tasks" aria-label="Search tasks">
           <select id="tkOwner" aria-label="Filter by person"><option value="">Everyone</option></select>
@@ -1143,6 +1154,7 @@ function render(day){
   const stPill=s=>`<span class="pill ${s==='Completed'?'on':/Waiting/.test(s||'')?'warn':s==='In Progress'?'brand':''}">${esc(s||'No status')}</span>`;
   const ct=csR('tasks'), T=(D.tasks||[]).filter(t=>ct.all||ct.has(t.due)); const OPEN_T=t=>!['Completed','Cancelled','Deferred'].includes(t.s);
   const tOpen=T.filter(OPEN_T);
+  { const tu=(CFG&&CFG.links||{}).tracker, a=$('tkTracker'); if(a){ if(tu) a.href=tu; a.hidden=!tu; } }
   const since14=addDays(now.day,-14);
   const ttile=(f,k,v,d)=>`<div class="tile click${TK_VIEW===f?' on':''}" role="button" tabindex="0" data-f="${f}" title="Show only these tasks"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="d">${esc(d||'')}</div></div>`;
   $('tkTiles').innerHTML=ttile('open','Open tasks',tOpen.length,T.length+(ct.all?' in Zoho CRM':' due in '+ct.label))+ttile('overdue','Overdue',tOpen.filter(t=>t.due&&t.due<now.day).length,'due before today')+ttile('today','Due today',tOpen.filter(t=>t.due===now.day).length,fmtDay(now.day))+ttile('waiting','Waiting',tOpen.filter(t=>/Waiting/.test(t.s||'')).length,'on a provider, customer or approval')+ttile('done','Done, 14 days',T.filter(t=>t.s==='Completed'&&dayOf(t.cl)>=since14).length,'');
