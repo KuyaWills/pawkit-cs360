@@ -62,7 +62,7 @@ def leave_balances(raw, cfg):
         opening = float(r.get("open") or 0)
         people.setdefault(r["name"], []).append({"type": r["type"], "of": r.get("allow"), "left": round(opening - used, 2),
                                                  "used": used, "held": held, "since": start})
-    order = {"Annual leave": 0, "Sick leave": 1, "Pet care leave": 2, "Unpaid leave": 3}
+    order = {"Annual leave": 0, "Sick leave": 1, "Pet care leave": 2, "Childcare leave": 3, "Unpaid leave": 4}
     for v in people.values():
         v.sort(key=lambda b: order.get(b["type"], 9))
     return {"synced": raw.get("generated"), "src": "Zoho Leave Balances", "people": people}

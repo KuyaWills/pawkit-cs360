@@ -520,7 +520,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
           <label class="wide">Who<select name="COBJ24CF1" id="lvWho" required><option value="">Choose your name</option></select></label>
           <label>From<input type="date" id="lvFrom" required></label>
           <label>To<input type="date" id="lvTo" required></label>
-          <label>Type<select name="COBJ24CF2" id="lvType" required><option>Annual leave</option><option>Sick leave</option><option>Pet care leave</option><option>Time off in lieu</option><option>Unpaid leave</option><option>Other</option></select></label>
+          <label>Type<select name="COBJ24CF2" id="lvType" required><option>Annual leave</option><option>Sick leave</option><option>Pet care leave</option><option>Childcare leave</option><option>Time off in lieu</option><option>Unpaid leave</option><option>Other</option></select></label>
           <div class="lvcredit"><span class="lbl">Leave credit</span><div id="lvBalWho" class="credit muted">Choose your name</div></div>
           <label class="wide">Reason (only managers see this, in Zoho)<input type="text" name="COBJ24CF3" maxlength="250"></label>
           <label class="wide">Who covers (optional)<input type="text" name="COBJ24CF4" maxlength="110"></label>
@@ -574,7 +574,7 @@ const LIVE_SLOT=n=>'https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/d'+
 let PW=null;
 // Leave credits (D.leave_bal: Zoho module Leave_Balances minus time off asked on this page) gate the request form:
 // a request for more days than are left is blocked. Types without a credit (time off in lieu, other) are not checked.
-const LV_TRACKED=['Annual leave','Sick leave','Pet care leave','Unpaid leave'];
+const LV_TRACKED=['Annual leave','Sick leave','Pet care leave','Childcare leave','Unpaid leave'];
 const fmtD=n=>{n=Math.round(n*100)/100; return n+(n===1?' day':' days');};
 function lvDays(w,f,t){ let n=0; if(!f) return 0; for(let d=dparts(f), end=dparts(t&&t>=f?t:f); d<=end; d=new Date(d.getTime()+864e5)){ if(((CFG.roster||{})[d.toISOString().slice(0,10)]||{})[w]!=='OFF') n++; } return n; }   // rest days in the schedule don't count
 function lvCredit(w,type){ const P=D&&D.leave_bal&&D.leave_bal.people&&D.leave_bal.people[w]; if(!P||!LV_TRACKED.includes(type)) return null; return P.find(x=>x.type===type)||{type,left:0,of:0,held:0,none:true}; }
