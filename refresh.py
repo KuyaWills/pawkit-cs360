@@ -489,8 +489,18 @@ def main():
             "pm": b.get("Payment_Method"), "amt": b.get("Base_Price"), "cat": b.get("Service_Category")}
            for b in z.all("select Date_Time, Booking_Status, Invoice_Status, Paid_On, Payment_Method, Base_Price, Service_Category from Booking where Date_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (s30, end14))]
 
+    # leave credits (custom module Leave_Balances): one record per person and leave type with the year's allowance and
+    # an opening balance on a date; build.py takes off approved time off from that date on. Admins edit it in Zoho.
+    try:
+        bal = [{"id": r.get("id"), "name": r.get("Team_Member"), "type": r.get("Leave_Type"), "allow": r.get("Allowance"),
+                "open": r.get("Opening_Balance"), "from": r.get("Opening_Date")}
+               for r in z.all("select Team_Member, Leave_Type, Allowance, Opening_Balance, Opening_Date from Leave_Balances where id is not null")]
+    except SystemExit as e:
+        print("WARNING leave balances could not be read:", str(e)[:120])
+        bal = None
+
     out = {"generated": now.isoformat(timespec="seconds"), "visits_until": end_vis, "wa": wa, "wa_now": wa_now, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"], "leave": leave,
-           "tasks": tasks, "orders": orders, "items": items, "inv": inv}
+           "bal": bal, "tasks": tasks, "orders": orders, "items": items, "inv": inv}
     tmp = os.path.join(HERE, "raw", "crm.json.tmp")
     with open(tmp, "w") as f:
         json.dump(out, f)

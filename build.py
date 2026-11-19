@@ -18,6 +18,56 @@ REFRESH_SECONDS = 60  # seconds between updates: launchd waits StartInterval (30
 SGT = timezone(timedelta(hours=8))
 
 
+def leave_balances(raw, cfg):
+    """Leave credits per person and type: the opening balance in Zoho (module Leave_Balances) minus the days of
+    time off requested on the page (Leave_Requests) from the opening date on. Approved requests count as used,
+    pending ones as held. Rest days (OFF) in the schedule are not counted. The last good copy of the Zoho
+    records is kept in raw/bal_cache.json for runs where Zoho can't be read."""
+    cache = os.path.join(HERE, "raw", "bal_cache.json")
+    rows = raw.get("bal")
+    if rows is None:
+        try:
+            rows = json.load(open(cache))
+        except (OSError, ValueError):
+            return None
+    else:
+        with open(cache, "w") as f:
+            json.dump(rows, f)
+    roster = cfg.get("roster") or {}
+
+    def days(name, a, b):
+        if not a:
+            return 0
+        d, end, n = datetime.strptime(a, "%Y-%m-%d"), datetime.strptime(b or a, "%Y-%m-%d"), 0
+        while d <= end:
+            if (roster.get(d.strftime("%Y-%m-%d")) or {}).get(name) != "OFF":
+                n += 1
+            d += timedelta(days=1)
+        return n
+
+    reqs = [l for l in (raw.get("leave") or []) if l.get("status") in ("Approved", "Pending")]
+    people = {}
+    for r in rows:
+        if not r.get("name") or not r.get("type"):
+            continue
+        start = r.get("from") or "2000-01-01"
+        used = held = 0
+        for l in reqs:
+            if l.get("name") == r["name"] and l.get("type") == r["type"] and (l.get("to") or l.get("from") or "") >= start:
+                n = days(r["name"], max(l.get("from") or start, start), l.get("to") or l.get("from"))
+                if l["status"] == "Approved":
+                    used += n
+                else:
+                    held += n
+        opening = float(r.get("open") or 0)
+        people.setdefault(r["name"], []).append({"type": r["type"], "of": r.get("allow"), "left": round(opening - used, 2),
+                                                 "used": used, "held": held, "since": start})
+    order = {"Annual leave": 0, "Sick leave": 1, "Pet care leave": 2, "Unpaid leave": 3}
+    for v in people.values():
+        v.sort(key=lambda b: order.get(b["type"], 9))
+    return {"synced": raw.get("generated"), "src": "Zoho Leave Balances", "people": people}
+
+
 def main():
     raw = json.load(open(sys.argv[1]))
     # config (roster, complaint summaries) is private: it lives outside the public repo.
@@ -48,11 +98,7 @@ def main():
         leave = (leave or []) + [{"id": "pb%d" % i, "name": r["name"], "type": r["type"], "from": r["from"], "to": r["to"], "status": "Approved",
                                   "note": r.get("note"), "by": "Payboy", "src": "Payboy", "cover": None, "asked": None, "when": None}
                                  for i, r in enumerate(pb["rows"])]
-    # leave balances copied once a day from Payboy (payboy_balances.py writes this private file)
-    try:
-        leave_bal = json.load(open(os.path.expanduser("~/.config/pawkit-cs360/payboy_balances.json")))
-    except (OSError, ValueError):
-        leave_bal = None
+    leave_bal = leave_balances(raw, cfg)
     # running number of this update (kept in raw/seq.txt); it picks the rotating branch the update is published to
     seq_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw", "seq.txt")
     try:

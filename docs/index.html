@@ -180,6 +180,10 @@ section[data-panel].active{display:block}
 .lvform label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink2);font-weight:700}
 .lvform label.wide,.lvform button,.lvform #lvErr{grid-column:1/-1}
 .lvform input,.lvform select{border-radius:10px;font-weight:400;width:100%}
+.lvcredit{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.lvcredit .lbl{color:var(--ink2);font-weight:700}
+.lvcredit .credit{min-height:38px;box-sizing:border-box;display:flex;align-items:center;padding:6px 12px;border-radius:10px;background:var(--mint,#e8f8f5);font-size:14px}
+.lvcredit .credit.bad{background:#fdecec;color:var(--bad)}
 @media (max-width:520px){.lvform{grid-template-columns:1fr}}
 footer{color:var(--ink3);font-size:12.5px;margin:18px 0 8px}
 
@@ -485,7 +489,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
       <div class="tablewrap"><table id="lvAll"></table></div>
     </details>
     <div class="card">
-      <h2>Leave balances</h2>
+      <h2>Leave credits</h2>
       <p class="sub" id="lbNote"></p>
       <div class="tablewrap"><table id="lvBal"></table></div>
     </div>
@@ -513,11 +517,11 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
           <input type="hidden" name="COBJ24CF51" id="lvFromZ">
           <input type="hidden" name="COBJ24CF52" id="lvToZ">
           <input type="text" name="aG9uZXlwb3Q" value="" style="display:none" tabindex="-1" autocomplete="off">
-          <label>Who<select name="COBJ24CF1" id="lvWho" required><option value="">Choose your name</option></select></label>
-          <p class="sub wide" id="lvBalWho" style="margin:0"></p>
-          <label>Type<select name="COBJ24CF2" id="lvType" required><option>Annual leave</option><option>Sick leave</option><option>Time off in lieu</option><option>Unpaid leave</option><option>Other</option></select></label>
+          <label class="wide">Who<select name="COBJ24CF1" id="lvWho" required><option value="">Choose your name</option></select></label>
           <label>From<input type="date" id="lvFrom" required></label>
           <label>To<input type="date" id="lvTo" required></label>
+          <label>Type<select name="COBJ24CF2" id="lvType" required><option>Annual leave</option><option>Sick leave</option><option>Pet care leave</option><option>Time off in lieu</option><option>Unpaid leave</option><option>Other</option></select></label>
+          <div class="lvcredit"><span class="lbl">Leave credit</span><div id="lvBalWho" class="credit muted">Choose your name</div></div>
           <label class="wide">Reason (only Charlene sees this, in Zoho)<input type="text" name="COBJ24CF3" maxlength="250"></label>
           <label class="wide">Who covers (optional)<input type="text" name="COBJ24CF4" maxlength="110"></label>
           <label class="wide" id="lvDocWrap" style="display:none">Medical document (required for sick leave; photo or PDF, up to 10 MB)<input type="file" name="theFile" id="lvDoc" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic" disabled></label>
@@ -568,19 +572,18 @@ const LIVE_API='https://api.github.com/repos/pawslyOps/pawkit-cs360/contents/dat
 const LIVE_URL='https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/data/data.json';
 const LIVE_SLOT=n=>'https://raw.githubusercontent.com/pawslyOps/pawkit-cs360/d'+n+'/data.json';   // rotating copies, see fetchNext          // fallback: cached up to 5 minutes
 let PW=null;
-// Payboy balances (D.leave_bal, copied daily) gate the request form: no balance left = the request can't be sent.
-// Form type -> Payboy leave type. Types not listed (time off in lieu, other) are not checked.
-const LV_MAP={'Annual leave':'Annual Leave','Sick leave':'Outpatient Leave','Unpaid leave':'Unpaid Leave'};
+// Leave credits (D.leave_bal: Zoho module Leave_Balances minus time off asked on this page) gate the request form:
+// a request for more days than are left is blocked. Types without a credit (time off in lieu, other) are not checked.
+const LV_TRACKED=['Annual leave','Sick leave','Pet care leave','Unpaid leave'];
+const fmtD=n=>{n=Math.round(n*100)/100; return n+(n===1?' day':' days');};
+function lvDays(w,f,t){ let n=0; if(!f) return 0; for(let d=dparts(f), end=dparts(t&&t>=f?t:f); d<=end; d=new Date(d.getTime()+864e5)){ if(((CFG.roster||{})[d.toISOString().slice(0,10)]||{})[w]!=='OFF') n++; } return n; }   // rest days in the schedule don't count
+function lvCredit(w,type){ const P=D&&D.leave_bal&&D.leave_bal.people&&D.leave_bal.people[w]; if(!P||!LV_TRACKED.includes(type)) return null; return P.find(x=>x.type===type)||{type,left:0,of:0,held:0,none:true}; }
 function balCheck(w,type,f,t){
-  const LB=D&&D.leave_bal, P=LB&&LB.people&&LB.people[w], pt=LV_MAP[type];
-  if(!P||!pt) return '';   // person not in Payboy, no copy yet, or a type Payboy doesn't track
-  const label=type.toLowerCase(), b=P.find(x=>x.type===pt);
-  if(!b) return 'You have no '+label+' in Payboy, so this request can\'t be sent. Choose another type, or talk to Vince.';
-  const m=/(\d+(?:\.\d+)?)\s*days?/.exec(b.left), h=/(\d+(?:\.\d+)?)\s*hrs?/.exec(b.left), days=m?+m[1]:0, hrs=h?+h[1]:0;
-  if(days<=0&&hrs<=0) return 'You have no '+label+' left in Payboy (0 of '+b.of+'). This request can\'t be sent.';
-  if(!f) return '';
-  let n=0; for(let d=dparts(f), end=dparts(t&&t>=f?t:f); d<=end; d=new Date(d.getTime()+864e5)){ if(((CFG.roster||{})[d.toISOString().slice(0,10)]||{})[w]!=='OFF') n++; }   // rest days in the schedule don't count
-  if(n>days+(hrs>0?1:0)) return 'Not enough '+label+' left: you asked for '+n+(n===1?' day':' days')+' but have '+b.left+' left in Payboy.';
+  const b=lvCredit(w,type); if(!b) return '';   // no credits set up for this person yet, or a type that isn't counted
+  const label=type.toLowerCase(), avail=b.left-(b.held||0);
+  if(b.none) return 'You have no '+label+' credit, so this request can\'t be sent. Choose another type, or talk to Vince.';
+  if(avail<=0) return 'You have no '+label+' left'+(b.held?' ('+fmtD(b.held)+' is waiting for approval)':'')+'. This request can\'t be sent.';
+  const n=lvDays(w,f,t); if(n>avail) return 'Not enough '+label+' left: you asked for '+fmtD(n)+' but have '+fmtD(avail)+' left.';
   return '';
 }
 const store={get(){try{return localStorage.getItem(KEY)}catch(e){return null}},set(v){try{localStorage.setItem(KEY,v)}catch(e){}},del(){try{localStorage.removeItem(KEY)}catch(e){}}};
@@ -1019,14 +1022,19 @@ function render(day){
     $('lvNote').innerHTML=k==='all'?'':'<a href="#leave" data-clear="lv">show all requests</a>';
     const pill=st=>`<span class="pill ${st==='Approved'?'on':st==='Rejected'?'bad':st==='Pending'?'warn':''}">${esc(st)}</span>`;
     $('lvAll').innerHTML=V.length?'<tr><th>Who</th><th>Type</th><th>Dates</th><th>Status</th><th>Decided by</th><th>Note</th><th>Cover</th><th></th></tr>'+V.slice().sort((a,b)=>(b.from||'').localeCompare(a.from||'')).map(l=>`<tr><td>${esc(l.name||'Not chosen')}</td><td>${esc(l.type||'')}${docPill(l)}</td><td>${rng(l)}</td><td>${pill(l.status)}</td><td>${esc(l.by||'')}</td><td class="muted">${esc(l.note||'')}</td><td class="muted">${esc(l.cover||'')}</td><td style="white-space:nowrap">${l.src?'<span class="muted">'+esc(l.src)+'</span>':link(l.id)}</td></tr>`).join(''):`<tr><td class="muted">${D.leave?'No leave requests yet.':'Leave requests appear after the next data refresh.'}</td></tr>`;
-    // ---- leave balances (copied from Payboy once a day) ----
-    const LB=D.leave_bal, LBP=(LB&&LB.people)||{}, lbTypes=[...new Set(Object.values(LBP).flat().map(b=>b.type))];
-    const lbOld=LB&&LB.synced&&(Date.now()-Date.parse(LB.synced))>36*36e5;
-    $('lbNote').innerHTML=LB?'Copied from Payboy '+esc(fmtDay(dayOf(LB.synced)))+' '+esc((LB.synced.split('T')[1]||'').slice(0,5))+'. Shown as days left, out of the allowance for the year. Time off approved on this page only comes off once it is also entered in Payboy.'+(lbOld?' <span class="pill warn">not updated for over a day</span>':''):'Not copied from Payboy yet.';
-    $('lvBal').innerHTML=LB?'<tr><th>Name</th>'+lbTypes.map(t=>`<th>${esc(t.replace(/ Leave$/,''))}</th>`).join('')+'</tr>'+CFG.people.map(p=>{const b=LBP[p.name];return '<tr><td>'+esc(p.name)+'</td>'+(b?lbTypes.map(t=>{const x=b.find(y=>y.type===t);return '<td>'+(x?`<b>${esc(x.left)}</b> <span class="muted">of ${esc(x.of)}</span>`:'<span class="muted">–</span>')+'</td>';}).join(''):`<td class="muted" colspan="${lbTypes.length}">Not in Payboy</td>`)+'</tr>';}).join(''):'';
-    const lbWho=()=>{const b=LBP[$('lvWho').value]; $('lvBalWho').innerHTML=b&&b.length?'Days left in Payboy: '+b.filter(x=>!/^0 days?$/.test(x.of)).map(x=>esc(x.type.replace(/ Leave$/,''))+' <b>'+esc(x.left)+'</b>').join(' · '):'';};
-    const lbLive=()=>{ $('lvErr').textContent=$('lvWho').value?balCheck($('lvWho').value,$('lvType').value,$('lvFrom').value,$('lvTo').value||$('lvFrom').value):''; };
-    if(!$('lvWho').dataset.lb){ $('lvWho').dataset.lb=1; $('lvWho').addEventListener('change',lbWho); ['lvWho','lvType','lvFrom','lvTo'].forEach(i=>$(i).addEventListener('change',()=>lbLive())); } lbWho();
+    // ---- leave credits (Zoho Leave Balances minus time off asked on this page) ----
+    const LB=D.leave_bal, LBP=(LB&&LB.people)||{};
+    $('lbNote').innerHTML=LB?'Days left of the allowance for the year. Approved time off is taken off automatically; time off waiting for approval is shown as held. Credits are kept in Zoho (Leave Balances); to correct one, edit its Opening Balance and Opening Date there.':'Leave credits appear after the next data refresh.';
+    $('lvBal').innerHTML=LB?'<tr><th>Name</th>'+LV_TRACKED.map(t=>`<th>${esc(t.replace(/ leave$/,''))}</th>`).join('')+'</tr>'+CFG.people.map(p=>{const b=LBP[p.name];return '<tr><td>'+esc(p.name)+'</td>'+(b?LV_TRACKED.map(t=>{const x=b.find(y=>y.type===t);return '<td>'+(x?`<b>${esc(fmtD(x.left))}</b> <span class="muted">of ${esc(x.of)}</span>`+(x.held?` <span class="pill warn">${esc(fmtD(x.held))} held</span>`:''):'<span class="muted">–</span>')+'</td>';}).join(''):`<td class="muted" colspan="${LV_TRACKED.length}">No credits set up yet</td>`)+'</tr>';}).join(''):'';
+    const lbWho=()=>{ const w=$('lvWho').value, ty=$('lvType').value, box=$('lvBalWho'); box.classList.remove('bad','muted');
+      if(!w){ box.textContent='Choose your name'; box.classList.add('muted'); return; }
+      const b=lvCredit(w,ty);
+      if(!b){ box.textContent=LV_TRACKED.includes(ty)?'No credits set up for you yet':'Not counted for this type'; box.classList.add('muted'); return; }
+      const avail=b.none?0:b.left-(b.held||0);
+      box.innerHTML=b.none?'None for you':'<span><b>'+esc(fmtD(avail))+'</b> left'+(b.of!=null?' <span class="muted">of '+esc(b.of)+'</span>':'')+(b.held?' <span class="muted">· '+esc(fmtD(b.held))+' waiting for approval</span>':'')+'</span>';
+      if(avail<=0) box.classList.add('bad'); };
+    const lbLive=()=>{ lbWho(); $('lvErr').textContent=$('lvWho').value?balCheck($('lvWho').value,$('lvType').value,$('lvFrom').value,$('lvTo').value||$('lvFrom').value):''; };
+    if(!$('lvWho').dataset.lb){ $('lvWho').dataset.lb=1; ['lvWho','lvType','lvFrom','lvTo'].forEach(i=>$(i).addEventListener('change',()=>lbLive())); } lbWho();
     const who=$('lvWho'); if(who.options.length<2) who.innerHTML='<option value="">Choose your name</option>'+CFG.people.map(p=>`<option>${esc(p.name)}</option>`).join('');
     if(!$('lvFrom').min){ $('lvFrom').min=addDays(td,-14); $('lvTo').min=addDays(td,-14); }
   }
