@@ -77,6 +77,14 @@ def main():
     try:
         cfg = json.load(open(cfg_path))
         codes = cfg["shift_codes"]
+        # shifts typed in the Schedule Tracker sheet win over the hand-kept roster, for people shown on the dashboard
+        shown = {q["name"] for q in cfg["people"]}
+        alias = {"9AM-6PM": "OFFICE", **(cfg.get("_sheet_aliases") or {})}
+        for d, row in (raw.get("sheet_roster") or {}).items():
+            for n, c in row.items():
+                c = " ".join(str(c).upper().split())
+                if n in shown and c:
+                    cfg["roster"].setdefault(d, {})[n] = alias.get(c, c)
         for d, r in cfg["roster"].items():
             for n, c in list(r.items()):
                 if isinstance(c, str) and c.strip() in codes:

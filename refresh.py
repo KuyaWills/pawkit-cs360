@@ -7,7 +7,7 @@ WhatsApp counts for older days are cached in raw/wa_cache.json; today and yester
 are re-counted every run, older days once an hour, to keep API use low.
 """
 import hmac
-import calendar, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import calendar, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -325,7 +325,73 @@ def slim_refund(r, nm):
     return {"id": r.get("id"), "n": r.get("Name"), "s": r.get("Refund_Status") or "No status", "why": r.get("Refund_Reason"),
             "amt": r.get("Refund_Amount"), "ch": r.get("Payment_Method"), "rq": r.get("Requested_Date") or (r.get("Created_Time") or "")[:10] or None,
             "done": r.get("Approved_Date"), "by": nm(r.get("Owner")), "pby": nm(r.get("Approved_By")), "rec": r.get("Handled_By"),
-            "cn": r.get("Xero_Credit_Note_No"), "bk": r.get("Booking.Name"), "cat": r.get("Booking.Service_Category"), "c": r.get("Created_Time")}
+            "cn": r.get("Xero_Credit_Note_No"), "bk": r.get("Booking.Name"), "cat": r.get("Booking.Service_Category")}
+
+
+# ---- schedule: read the week tabs of the Schedule Tracker sheet, so the sheet is the one place to edit shifts ----
+SHEET_CACHE = os.path.join(HERE, "raw", "sheet_roster.json")
+_MONTHS = {m: i + 1 for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split())}
+
+
+def sheet_roster(z):
+    """{date: {name: code as typed}} from every tab whose row 2 says 'Week of Mon 23 Nov to Sun 29 Nov 2026'.
+    Needs the ZohoSheet.dataAPI.READ scope. On any failure the last good copy is used, and Zoho is left alone for 10 minutes."""
+    try:
+        with open(SHEET_CACHE) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    try:
+        with open(os.path.expanduser("~/.config/pawkit-cs360/config.json")) as f:
+            sid = json.load(f).get("_schedule_sheet")
+    except (OSError, ValueError):
+        sid = None
+    if not sid or cache.get("retry_after", 0) > time.time():
+        return cache.get("roster") or {}
+
+    def call(**params):
+        req = urllib.request.Request("https://sheet.zoho.com/api/v2/" + sid, data=urllib.parse.urlencode(params).encode(),
+                                     headers={"Authorization": "Zoho-oauthtoken " + z.token()}, method="POST")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.load(r)
+
+    def grid(j):   # the rows of cells, wherever the response keeps them
+        for v in j.values():
+            if isinstance(v, list) and v and all(isinstance(x, list) for x in v):
+                return v
+        return []
+    try:
+        roster = {}
+        for ws in call(method="worksheet.list").get("worksheet_names", []):
+            name = ws.get("worksheet_name") if isinstance(ws, dict) else ws
+            rows = grid(call(method="worksheet.content.get", worksheet_name=name, start_row=1, end_row=40, start_column=1, end_column=9,
+                             response_type="array", major_dimension="rows"))
+            cell = lambda r, c: str(rows[r][c]).strip() if r < len(rows) and c < len(rows[r]) and rows[r][c] is not None else ""
+            wk = next((m for r in range(min(6, len(rows))) for m in [re.search(r"Week of \w+ (\d{1,2}) (\w{3})\w* to \w+ \d{1,2} (\w{3})\w* (\d{4})", cell(r, 0))] if m), None)
+            head = next((r for r in range(len(rows)) if cell(r, 0).lower() == "team member"), None)
+            if not wk or head is None or wk.group(2).lower() not in _MONTHS:
+                continue   # not a week tab (the leave log, notes)
+            year = int(wk.group(4)) - (1 if wk.group(2).lower() == "dec" and wk.group(3).lower() == "jan" else 0)
+            mon = datetime(year, _MONTHS[wk.group(2).lower()], int(wk.group(1))).date()
+            for r in range(head + 1, len(rows)):
+                who = cell(r, 0)
+                if not who or who.lower().startswith("agents on shift"):
+                    break
+                for i in range(7):
+                    if cell(r, 2 + i):
+                        roster.setdefault((mon + timedelta(days=i)).isoformat(), {})[who] = cell(r, 2 + i)
+        if not roster:
+            raise ValueError("no week tabs found")
+        cache = {"roster": roster, "read": time.time()}
+    except Exception as e:   # the schedule is an extra: nothing here may stop the rest of the update
+        detail = e.read()[:120].decode("utf-8", "replace") if isinstance(e, urllib.error.HTTPError) else str(e)[:120]
+        print("WARNING schedule sheet could not be read (%s %s); using the last copy" % (type(e).__name__, detail))
+        cache["retry_after"] = time.time() + 600
+    tmp = SHEET_CACHE + ".%d.tmp" % os.getpid()
+    with open(tmp, "w") as f:
+        json.dump(cache, f)
+    os.replace(tmp, SHEET_CACHE)
+    return cache.get("roster") or {}
 
 
 def rng(d):
@@ -379,7 +445,7 @@ def main():
 
     hist = customer_history(z, today)
     first = hist["first"]
-    F = "Created_Time, Date_Time, End_Time, Booking_Status, Service_Category, Created_By, Partner_Name.Name, Area, Invoice_Status, Payment_Method, Base_Price, Pet_Owner, Reason_Not_Fulfilled, Reason, Reason_Note, Note, Booking_Code"
+    F = "Created_Time, Date_Time, End_Time, Booking_Status, Service_Category, Created_By, Partner_Name.Name, Area, Invoice_Status, Payment_Method, Base_Price, Pet_Owner, Reason_Not_Fulfilled, Reason, Reason_Note, Note, Booking_Code, Name, Reminder_Provider_Sent, Reminder_Owner_Sent, Visit_Status, Status_Updated_At, Status_Updated_By, Provider_ETA, Delay_Reason, Delay_Minutes, Visit_End_Reason"
 
     def owner(r):
         o = r.get("Pet_Owner")
@@ -408,6 +474,9 @@ def main():
                       "cat": r.get("Service_Category"), "src": None, "by": nm(r.get("Created_By")), "p": r.get("Partner_Name.Name"),
                       "a": r.get("Area"), "inv": r.get("Invoice_Status"), "pay": r.get("Payment_Method"),
                       "amt": r.get("Base_Price"), "o": (owner(r) or "")[-7:] or None, "rep": repeat(r), **why(r),
+                      "ref": r.get("Name"), **{k: r[f] for k, f in (("v", "Visit_Status"), ("vt", "Status_Updated_At"), ("vb", "Status_Updated_By"), ("eta", "Provider_ETA"),
+                                                 ("dl", "Delay_Reason"), ("dm", "Delay_Minutes"), ("ve", "Visit_End_Reason")) if r.get(f) not in (None, "")},
+                      **({"rp": 1} if r.get("Reminder_Provider_Sent") else {}), **({"ro": 1} if r.get("Reminder_Owner_Sent") else {}),
                       **({"app": True} if r.get("Booking_Code") else {})}   # booked through the Pawkit app (it sets a Booking Code)
     start31 = (today - timedelta(days=13)).replace(day=1).isoformat()  # month of the oldest pickable day
     created = [slim(r) for r in z.all("select %s from Booking where Created_Time between '%sT00:00:00+08:00' and '%sT23:59:59+08:00'" % (F, start31, end14))]
@@ -528,7 +597,7 @@ def main():
         bal = None
 
     out = {"generated": now.isoformat(timespec="seconds"), "visits_until": end_vis, "wa": wa, "wa_now": wa_now, "created": created, "visits": visits, "comp": comp, "cust": hist["cust"], "leave": leave,
-           "bal": bal, "tasks": tasks, "orders": orders, "app_orders": app_orders, "items": items, "inv": inv, "refunds": refunds}
+           "bal": bal, "tasks": tasks, "orders": orders, "app_orders": app_orders, "sheet_roster": sheet_roster(z), "items": items, "inv": inv, "refunds": refunds}
     tmp = os.path.join(HERE, "raw", "crm.json.tmp")
     with open(tmp, "w") as f:
         json.dump(out, f)
