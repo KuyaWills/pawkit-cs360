@@ -386,7 +386,8 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <div class="tiles" id="waTiles"></div>
     <div class="card" id="waTaskCard">
       <h2 id="waTaskTitle">WhatsApp reply tasks</h2>
-      <p class="sub" id="waTaskNote">Unanswered customer chats turned into Zoho tasks by the 8:00 AM after-hours digest, split across the agents on shift. Reply in WhatsApp, then set the task to Completed in Zoho (it also closes by itself the next morning once a Pawkit reply shows in the chat). Click a row to read the messages.</p>
+      <p class="sub" id="waTaskNote">Unanswered customer chats turned into Zoho tasks by the 8:00 AM after-hours digest, split across the agents on shift. Reply in WhatsApp, then set the task's Status to Completed in the Task Tracker (it also closes by itself the next morning once a Pawkit reply shows in the chat). Click a row to read the messages.</p>
+      <p style="margin:0 0 12px"><a class="btnlink" id="waTracker" href="#tasks" target="_blank" rel="noopener" hidden>Open the Task Tracker ›</a></p>
       <div class="seg" role="group" aria-label="Show" id="waTaskSeg" style="margin:0 0 10px"><button data-v="open">Open</button><button data-v="done">Completed today</button></div>
       <div class="tablewrap"><table id="waTasks"></table></div>
     </div>
@@ -776,6 +777,7 @@ function renderWaTasks(){
   const all=(D.tasks||[]).filter(t=>/^WhatsApp reply/.test(t.sub||'')), today=sgNow().day;
   const open=all.filter(t=>!['Completed','Cancelled'].includes(t.s)), done=all.filter(t=>t.s==='Completed'&&dayOf(t.cl)===today);
   const card=$('waTaskCard'); card.style.display=all.length?'':'none'; if(!all.length) return;
+  { const tu=(CFG&&CFG.links||{}).tracker, a=$('waTracker'); if(a){ if(tu) a.href=tu; a.hidden=!tu; } }
   $('waTaskSeg').querySelectorAll('button').forEach(b=>{ const on=b.dataset.v===WT_V; b.setAttribute('aria-pressed',String(on)); b.classList.toggle('on',on); b.textContent=(b.dataset.v==='open'?'Open · '+open.length:'Completed today · '+done.length); });
   const V=(WT_V==='open'?open:done).map(t=>({...t,...waTaskParse(t)})).sort((a,b)=>(b.urgent-a.urgent)||String(a.c||'').localeCompare(String(b.c||'')));
   WT_ROWS=V.map(t=>({name:t.who||t.sub.replace(/^WhatsApp reply – /,''),tel:t.tel,n:t.msgs.length,msgs:t.msgs.map(x=>({x})),link:t.link}));
