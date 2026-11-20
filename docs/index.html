@@ -446,13 +446,13 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <div class="tiles" id="psTiles"></div>
     <div class="card">
       <h2>Where each visit stands</h2>
-      <p class="sub">The steps of the Provider Status workflow. Solid steps are worked out now from Zoho's Booking Status, the provider on the booking and the clock. Dashed steps need the provider's WhatsApp buttons and are not live yet.</p>
+      <p class="sub">The steps of the Provider Status workflow. A step comes from the Visit Status on the booking in Zoho, which the CS team sets with the Update button until the providers' WhatsApp buttons are connected. A visit with no Visit Status is placed by its Booking Status, its provider and the clock (Scheduled, Under way, Not closed).</p>
       <div id="psPipe" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"></div>
       <div id="psLinks"></div>
     </div>
     <div class="card">
       <h2>Needs the CS team</h2>
-      <p class="sub">Visits with something to do: no provider yet, starting within 45 minutes, or past their end time and still open in Zoho.</p>
+      <p class="sub">Visits with something to do: no provider yet, a provider who declined or can't be reached, starting within 45 minutes, running late, or past their end time and still open in Zoho.</p>
       <div class="tablewrap"><table id="psTodo"></table></div>
     </div>
     <div class="card">
@@ -1203,25 +1203,37 @@ function render(day){
   { const pd=PS_TOM?addDays(now.day,1):day, nowM=pd<now.day?1e6:pd>now.day?-1e6:now.min, isT=pd===now.day;
     const V=D.visits.filter(r=>dayOf(r.d)===pd).sort((a,b)=>(a.d||'').localeCompare(b.d||''));
     const tm=iso=>iso?t12(iso.slice(11,16)):'', mn=iso=>iso?toMin(iso.slice(11,16)):0;
+    // Booking Status closes a visit; otherwise the Visit Status set in Zoho wins; with neither, the step comes from the provider and the clock
     const stage=r=>['Cancelled','Refund'].includes(r.s)?'Cancelled':r.s==='To be Rescheduled'?'Needs reschedule':r.s==='Completed'?'Completed':
+      r.v?(r.v==='Completed'&&nowM>=mn(r.e||r.d)?'Not closed':r.v):
       (!r.p||/Pending/.test(r.s||''))?'Awaiting provider':nowM<mn(r.d)?'Scheduled':nowM<mn(r.e||r.d)?'Under way':'Not closed';
+    const PRE=['Confirmed','On the way','Delayed','Nearby','Checking with provider'], etaM=r=>r.eta&&dayOf(r.eta)===pd?mn(r.eta):null;
     const step=r=>{ const g=stage(r), left=mn(r.d)-nowM;   // [tone, what the CS team does next]
+      if(g==='Provider declined') return ['bad','Provider can\'t make it: reassign, and call the customer'];
+      if(g==='Checking with provider') return ['warn','Provider not reached: keep trying, and keep the customer updated'];
+      if(PRE.includes(g)&&isT&&left<=-30) return ['bad','Over 30 min late and not arrived: Escalation SOP applies'];
+      if((g==='On the way'||g==='Delayed')&&isT&&etaM(r)!=null&&nowM>=etaM(r)+10) return ['warn','Arrival time '+tm(r.eta)+' has passed: call the provider'];
+      if(g==='Delayed') return ['',['Running late'+(r.dm?' about '+r.dm+' min':''),r.dl,r.eta?'new arrival '+tm(r.eta):''].filter(Boolean).join(' · ')];
+      if(g==='On the way') return ['',r.eta?'Arriving about '+tm(r.eta):'On the way'];
+      if(g==='Confirmed'&&isT&&left<=45) return ['warn',(left>=0?'Starts in '+left+' min':'Start time passed')+': check the provider is on the way'];
+      if(r.v&&r.ve&&['Cancelled','Needs reschedule'].includes(r.v)) return ['warn',r.v+' by the provider ('+r.ve+'): update Booking Status and call the customer'];
       if(g==='Awaiting provider') return ['bad',(r.p?'Waiting on '+(/Owner/.test(r.s||'')?'the customer':'the time slot'):'No provider on the booking')+': settle it in Zoho'];
-      if(g==='Not closed') return ['warn','Past its end time and still Scheduled: close it in Zoho'];
+      if(g==='Not closed') return ['warn',(r.v==='Completed'?'Provider marked it completed':'Past its end time and still Scheduled')+': close it in Zoho'];
       if(g==='Scheduled'&&isT&&left<=45) return ['warn','Starts in '+left+' min: check the provider is on the way'];
       if(g==='Scheduled'&&isT&&left<=90) return ['','Starts in '+left+' min'];
       if(g==='Scheduled'&&!r.rp) return ['','Provider reminder not sent yet'];
       if(g==='Under way') return ['','Should be under way since '+tm(r.d)];
       return ['','']; };
-    const tone={'Awaiting provider':'bad','Scheduled':'brand','Under way':'brand','Not closed':'warn','Completed':'on'};
+    const tone={'Awaiting provider':'bad','Scheduled':'brand','Confirmed':'brand','On the way':'brand','Delayed':'warn','Nearby':'brand','Arrived':'on','In progress':'on','Under way':'brand','Not closed':'warn','Completed':'on','Provider declined':'bad','Checking with provider':'warn'};
     const pill=r=>`<span class="pill ${tone[stage(r)]||''}">${esc(stage(r))}</span>`;
-    const n=g=>V.filter(r=>stage(r)===g).length, soon=V.filter(r=>stage(r)==='Scheduled'&&isT&&mn(r.d)-nowM<=90);
+    const n=g=>V.filter(r=>stage(r)===g).length, soon=V.filter(r=>['Scheduled','Confirmed'].includes(stage(r))&&isT&&mn(r.d)-nowM<=90);
+    const travel=V.filter(r=>['On the way','Delayed','Nearby'].includes(stage(r))), under=V.filter(r=>['Arrived','In progress','Under way'].includes(stage(r)));
     document.querySelectorAll('#psSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.ps)===PS_TOM));
     $('psLabel').textContent=fmtDay(pd)+(isT?' (today)':'')+' · '+V.length+' visit'+(V.length===1?'':'s');
     $('psTiles').innerHTML=tile('Visits',V.length,fmtDay(pd),'ps:all')+tile('Awaiting provider',n('Awaiting provider'),'no provider, or a slot not settled','ps:Awaiting provider')
-      +tile('Starting soon',soon.length,isT?'within 90 minutes':'only counted for today','ps:soon')+tile('Under way',n('Under way'),'by the clock, not confirmed by the provider','ps:Under way')
+      +tile('Starting soon',soon.length,isT?'within 90 minutes':'only counted for today','ps:soon')+tile('On the way',travel.length,'on the way, delayed or nearby','ps:travel')+tile('Under way',under.length,'arrived or in progress, or by the clock','ps:under')
       +tile('Not closed',n('Not closed'),'past the end time, still Scheduled','ps:Not closed')+tile('Completed',n('Completed'),'closed in Zoho','ps:Completed');
-    const live=['Awaiting provider','Scheduled'], later=['On the way','Delayed','Nearby','Arrived'], ends=['Cancelled','Needs reschedule'];
+    const live=['Awaiting provider','Scheduled','Confirmed','On the way','Delayed','Nearby','Arrived','In progress'], later=[], ends=['Cancelled','Needs reschedule','Provider declined','Checking with provider'];
     const chip=(g,dash)=>`<span class="pill ${dash?'':(tone[g]||'')}" style="padding:4px 12px;font-size:13.5px${dash?';border:1px dashed var(--line);color:var(--ink2)':''}"${dash?' title="Needs the WhatsApp buttons: not live yet"':''}>${esc(g)}${dash?'':' <b>'+n(g)+'</b>'}</span>`;
     $('psPipe').innerHTML=[...live.map(g=>chip(g)),...later.map(g=>chip(g,1)),chip('Under way'),chip('Not closed'),chip('Completed')].join('<span class="muted">→</span>')+'<span class="muted" style="margin-left:8px">Ended early:</span>'+ends.map(g=>chip(g)).join('');
     const LK=(CFG.links||{}).provider||[]; $('psLinks').innerHTML=LK.length?'<div class="ovl" style="margin-top:12px">'+LK.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join('')+'</div>':'';
@@ -1232,9 +1244,9 @@ function render(day){
     const by={}; V.filter(r=>!['Cancelled','Needs reschedule'].includes(stage(r))).forEach(r=>(by[r.p||'Not assigned']=by[r.p||'Not assigned']||[]).push(r));
     const provs=Object.keys(by).sort((a,b)=>by[b].length-by[a].length||a.localeCompare(b));
     $('psProv').innerHTML=provs.length?'<tr><th>Provider</th><th class="num">Visits</th><th>The day</th></tr>'+provs.map(p=>`<tr><td style="white-space:nowrap">${esc(p)}</td><td class="num">${by[p].length}</td><td>${by[p].map(r=>`<span class="pill ${tone[stage(r)]||''}" style="margin:2px 4px 2px 0" title="${esc(stage(r)+' · '+(r.ref||''))}">${esc(tm(r.d)+'–'+tm(r.e)+' '+[r.cat,r.a].filter(Boolean).join(', '))}</span>`).join('')}</td></tr>`).join(''):'<tr><td class="muted">No visits on this day.</td></tr>';
-    const key=(ACT_ON.ps||'ps:all').slice(3), VA=V.filter(r=>key==='all'?true:key==='soon'?soon.includes(r):stage(r)===key);
-    $('psNote').innerHTML=(key==='all'?'':esc((key==='soon'?'Starting soon':key)+' only')+' · <a href="#provider" data-clear="ps">show all</a> · ')+esc(VA.length+' of '+V.length+' visits, in time order. Reminders come from Zoho\'s "reminder sent" ticks.');
-    $('psAll').innerHTML=VA.length?'<tr><th>Time</th><th>Booking</th><th>Service</th><th>Provider</th><th>Reminders sent</th><th>Step</th><th>Note</th><th></th></tr>'+VA.map(r=>`<tr><td style="white-space:nowrap">${esc(tm(r.d)+'–'+tm(r.e))}</td><td>${recLink('booking',r.id,r.ref||'Booking')}${r.app?' <span class="pill">App</span>':''}</td><td>${what(r)}</td><td>${esc(r.p||'Not assigned')}</td><td style="white-space:nowrap"><span class="pill ${r.rp?'on':''}">Provider ${r.rp?'✓':'–'}</span> <span class="pill ${r.ro?'on':''}">Customer ${r.ro?'✓':'–'}</span></td><td>${pill(r)}</td><td class="muted">${esc(step(r)[1])}</td><td>${upd(r)}</td></tr>`).join(''):'<tr><td class="muted">No visits match.</td></tr>';
+    const key=(ACT_ON.ps||'ps:all').slice(3), VA=V.filter(r=>key==='all'?true:key==='soon'?soon.includes(r):key==='travel'?travel.includes(r):key==='under'?under.includes(r):stage(r)===key);
+    $('psNote').innerHTML=(key==='all'?'':esc(({soon:'Starting soon',travel:'On the way',under:'Under way'}[key]||key)+' only')+' · <a href="#provider" data-clear="ps">show all</a> · ')+esc(VA.length+' of '+V.length+' visits, in time order. Reminders come from Zoho\'s "reminder sent" ticks.');
+    $('psAll').innerHTML=VA.length?'<tr><th>Time</th><th>Booking</th><th>Service</th><th>Provider</th><th>Reminders sent</th><th>Step</th><th>Note</th><th></th></tr>'+VA.map(r=>`<tr><td style="white-space:nowrap">${esc(tm(r.d)+'–'+tm(r.e))}</td><td>${recLink('booking',r.id,r.ref||'Booking')}${r.app?' <span class="pill">App</span>':''}</td><td>${what(r)}</td><td>${esc(r.p||'Not assigned')}</td><td style="white-space:nowrap"><span class="pill ${r.rp?'on':''}">Provider ${r.rp?'✓':'–'}</span> <span class="pill ${r.ro?'on':''}">Customer ${r.ro?'✓':'–'}</span></td><td>${pill(r)}${r.v?`<div class="muted" style="font-size:12px;white-space:nowrap">${esc('set'+(r.vb?' by '+r.vb:'')+(r.vt?' '+tm(r.vt):''))}</div>`:''}</td><td class="muted">${esc(step(r)[1])}</td><td>${upd(r)}</td></tr>`).join(''):'<tr><td class="muted">No visits match.</td></tr>';
     if(!$('psSeg').dataset.on){ $('psSeg').dataset.on=1; $('psSeg').addEventListener('click',e=>{ const b=e.target.closest('button[data-ps]'); if(b){ PS_TOM=Number(b.dataset.ps); render($('day').value); } }); }
   }
 
