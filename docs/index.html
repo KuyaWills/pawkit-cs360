@@ -318,6 +318,7 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <div class="card">
       <h2>Week schedule</h2>
       <p class="sub" id="weekSub">From the Pawkit CS Team Schedule Tracker.</p>
+      <div class="rangebar" style="margin:6px 0 8px"><div class="datepick"><button id="wkPrev" type="button" aria-label="Previous week" title="Previous week">‹</button><strong id="wkLabel" style="padding:0 8px;white-space:nowrap"></strong><button id="wkNext" type="button" aria-label="Next week" title="Next week">›</button><button id="wkNow" type="button" class="todaybtn">This week</button></div></div>
       <div class="tablewrap"><table class="sched" id="week"></table></div>
     </div>
     <div class="two">
@@ -826,7 +827,7 @@ function init(data){
   const sel=$('day');
   sel.innerHTML=days.slice().reverse().map(d=>`<option value="${d}">${fmtDay(d)}${d===today?' (today)':''}</option>`).join('');
   sel.value=days.includes(today)?today:days[days.length-1];
-  sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; SCHED_DAY=null; render(sel.value);});
+  sel.addEventListener('change',()=>{USER_PICKED=sel.value!==sgNow().day; BK_DAY=null; SCHED_DAY=null; SCHED_WEEK=0; render(sel.value);});
   const TABS=[...document.querySelectorAll('#tabs button')];
   // Two main tabs are groups with sub-tabs. The old links (#schedule, #leave, #whatsapp, #tasks, #complaints)
   // open the matching sub-tab, and each group remembers the sub-tab last opened.
@@ -885,6 +886,7 @@ function showUpdated(){
 }
 const ACT_ON={};
 let PS_TOM=0;         // Provider Status: 0 = the day picked at the top, 1 = tomorrow
+let SCHED_WEEK=0;  // Week schedule: weeks before (-) or after (+) the week of the day picked at the top
 let SCHED_DAY=null;  // date clicked in the Week schedule: the Coverage card shows it (null = the day picked at the top)
 let OFF_WK=null;   // Monday of the week shown in Rest days and time off
 let USER_PICKED=false, PULLING=false, MISSES=0, POLL_TIMER=null, LIVE_FAILED=false;
@@ -1055,10 +1057,15 @@ function render(day){
 
   // ---- week ----
   const rdays=Object.keys(CFG.roster).sort();
-  const wk=rdays.filter(d=>Math.abs(dparts(d)-dparts(day))<7*864e5);
-  const weekDays=wk.length?wk:rdays.slice(-7);
+  const wkStart=addDays(day,7*SCHED_WEEK-((dparts(day).getUTCDay()+6)%7));   // weekly view: Monday to Sunday
+  const weekDays=[0,1,2,3,4,5,6].map(i=>addDays(wkStart,i));
+  $('wkLabel').textContent=fmtDay(weekDays[0])+' – '+fmtDay(weekDays[6]);
+  $('wkNow').disabled=SCHED_WEEK===0;
+  $('wkPrev').disabled=!rdays.length||weekDays[0]<=rdays[0]; $('wkNext').disabled=!rdays.length||weekDays[6]>=rdays[rdays.length-1];
+  if(!$('wkPrev').dataset.on){ $('wkPrev').dataset.on=1; const go=n=>{ SCHED_WEEK=n===0?0:SCHED_WEEK+n; SCHED_DAY=null; render($('day').value); };
+    $('wkPrev').addEventListener('click',()=>go(-1)); $('wkNext').addEventListener('click',()=>go(1)); $('wkNow').addEventListener('click',()=>go(0)); }
   const sd=SCHED_DAY&&CFG.roster[SCHED_DAY]&&weekDays.includes(SCHED_DAY)?SCHED_DAY:day, sRoster=CFG.roster[sd]||null, sToday=sd===now.day;
-  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[weekDays.length-1])+'. Click a date to see its coverage above.';
+  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, one week at a time (Monday to Sunday). Click a date to see its coverage above.';
   $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" role="button" tabindex="0" title="Show coverage for this date" style="cursor:pointer">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
     CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer"><span class="code ${esc(c)}">${esc(c||'–')}</span></td>`;}).join('')+'</tr>').join('')+
     TEAMS.map(([lbl,grp])=>'<tr><th>'+esc(lbl)+'</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer">${grp.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>').join('');
@@ -1141,9 +1148,10 @@ function render(day){
   // ---- schedule: week checks ----
   $('weekChecks').innerHTML='<tr><th>Day</th>'+(opsA.length?'<th class="num">CS</th><th class="num">Ops</th>':'')+'<th class="num">Agents</th><th>8am</th><th>9:30pm</th><th>3+ agents</th></tr>'+weekDays.map(d=>{
     const r=CFG.roster[d]||{}; const n=agents.filter(p=>shiftHours(r[p.name]).length).length; const dow=dparts(d).getUTCDay();
-    const am=(dow===0||dow===6)?'<span class="muted">weekend</span>':agents.some(p=>onAt(r[p.name],480))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
-    const pm=agents.some(p=>onAt(r[p.name],1290))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
-    const three=n>=3?'<span class="pill on">yes</span>':'<span class="pill warn">only '+n+'</span>';
+    let am=(dow===0||dow===6)?'<span class="muted">weekend</span>':agents.some(p=>onAt(r[p.name],480))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
+    let pm=agents.some(p=>onAt(r[p.name],1290))?'<span class="pill on">covered</span>':'<span class="pill warn">nobody</span>';
+    let three=n>=3?'<span class="pill on">yes</span>':'<span class="pill warn">only '+n+'</span>';
+    if(!CFG.roster[d]){ am=pm=three='<span class="muted">not in tracker yet</span>'; }
     const w=g=>g.filter(p=>shiftHours(r[p.name]).length).length;
     return `<tr><td>${esc(fmtDay(d))}</td>${opsA.length?`<td class="num">${w(csA)}</td><td class="num">${w(opsA)}</td>`:''}<td class="num">${n}</td><td>${am}</td><td>${pm}</td><td>${three}</td></tr>`;}).join('');
 
