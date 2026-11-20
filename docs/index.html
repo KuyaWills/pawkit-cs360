@@ -313,12 +313,12 @@ tr.wrow .readmsg{color:var(--brand);font-size:12px;font-weight:700;margin-left:6
     <div class="card">
       <h2 id="tlTitle">Coverage</h2>
       <p class="sub">Each bar is a shift, Singapore time, 7am to 11pm. The red line is the time now. The bottom rows count CS agents, Ops agents and all agents on shift each half hour.</p>
+      <div class="rangebar" style="margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><select id="wkSel" aria-label="Week"></select><div class="seg" role="group" aria-label="Day" id="wkDays"></div></div>
       <div class="tablewrap"><div id="timeline"></div></div>
     </div>
     <div class="card">
       <h2>Week schedule</h2>
       <p class="sub" id="weekSub">From the Pawkit CS Team Schedule Tracker.</p>
-      <div class="rangebar" style="margin:6px 0 8px"><div class="datepick"><button id="wkPrev" type="button" aria-label="Previous week" title="Previous week">‹</button><strong id="wkLabel" style="padding:0 8px;white-space:nowrap"></strong><button id="wkNext" type="button" aria-label="Next week" title="Next week">›</button><button id="wkNow" type="button" class="todaybtn">This week</button></div></div>
       <div class="tablewrap"><table class="sched" id="week"></table></div>
     </div>
     <div class="two">
@@ -1059,13 +1059,15 @@ function render(day){
   const rdays=Object.keys(CFG.roster).sort();
   const wkStart=addDays(day,7*SCHED_WEEK-((dparts(day).getUTCDay()+6)%7));   // weekly view: Monday to Sunday
   const weekDays=[0,1,2,3,4,5,6].map(i=>addDays(wkStart,i));
-  $('wkLabel').textContent=fmtDay(weekDays[0])+' – '+fmtDay(weekDays[6]);
-  $('wkNow').disabled=SCHED_WEEK===0;
-  $('wkPrev').disabled=!rdays.length||weekDays[0]<=rdays[0]; $('wkNext').disabled=!rdays.length||weekDays[6]>=rdays[rdays.length-1];
-  if(!$('wkPrev').dataset.on){ $('wkPrev').dataset.on=1; const go=n=>{ SCHED_WEEK=n===0?0:SCHED_WEEK+n; SCHED_DAY=null; render($('day').value); };
-    $('wkPrev').addEventListener('click',()=>go(-1)); $('wkNext').addEventListener('click',()=>go(1)); $('wkNow').addEventListener('click',()=>go(0)); }
-  const sd=SCHED_DAY&&CFG.roster[SCHED_DAY]&&weekDays.includes(SCHED_DAY)?SCHED_DAY:day, sRoster=CFG.roster[sd]||null, sToday=sd===now.day;
-  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, one week at a time (Monday to Sunday). Click a date to see its coverage above.';
+  const isoWeek=s=>{ const d=dparts(s); d.setUTCDate(d.getUTCDate()+3-(d.getUTCDay()+6)%7); const y=new Date(Date.UTC(d.getUTCFullYear(),0,4)); return 1+Math.round(((d-y)/864e5-3+(y.getUTCDay()+6)%7)/7); };
+  const short=d=>fmtDay(d).replace(/^\w+ /,'');
+  $('wkSel').innerHTML=[0,1].map(n=>{ const m=addDays(day,7*n-((dparts(day).getUTCDay()+6)%7)); return `<option value="${n}"${n===SCHED_WEEK?' selected':''}>Week ${isoWeek(m)} · ${n?'Next week':'This week'} (${short(m)} – ${short(addDays(m,6))})</option>`; }).join('');
+  if(!$('wkSel').dataset.on){ $('wkSel').dataset.on=1;
+    $('wkSel').addEventListener('change',()=>{ const n=+$('wkSel').value; SCHED_WEEK=n; SCHED_DAY=n?addDays($('day').value,7*n):null; render($('day').value); });
+    $('wkDays').addEventListener('click',e=>{ const b=e.target.closest('button[data-sd]'); if(!b) return; SCHED_DAY=b.dataset.sd; render($('day').value); }); }
+  const sd=SCHED_DAY&&weekDays.includes(SCHED_DAY)?SCHED_DAY:weekDays.includes(day)?day:weekDays[0], sRoster=CFG.roster[sd]||null, sToday=sd===now.day;
+  $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[6])+' (pick the week in Coverage above). Click a date to see its coverage.';
+  $('wkDays').innerHTML=weekDays.map(d=>`<button type="button" data-sd="${d}" aria-pressed="${d===sd}" title="${esc(fmtDay(d))}">${esc(fmtDay(d).replace(/ \w+$/,''))}</button>`).join('');
   $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" role="button" tabindex="0" title="Show coverage for this date" style="cursor:pointer">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
     CFG.people.map(p=>'<tr><td>'+esc(p.name)+'</td>'+weekDays.map(d=>{const c=(CFG.roster[d]||{})[p.name]||'';return `<td class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer"><span class="code ${esc(c)}">${esc(c||'–')}</span></td>`;}).join('')+'</tr>').join('')+
     TEAMS.map(([lbl,grp])=>'<tr><th>'+esc(lbl)+'</th>'+weekDays.map(d=>`<th class="${d===sd?'today':''}" data-sd="${d}" style="cursor:pointer">${grp.filter(p=>shiftHours((CFG.roster[d]||{})[p.name]).length).length}</th>`).join('')+'</tr>').join('');
@@ -1125,7 +1127,7 @@ function render(day){
 
   // ---- schedule: timeline ----
   const T0=7*60, T1=23*60, pct=m=>((Math.min(Math.max(m,T0),T1)-T0)/(T1-T0)*100);
-  $('tlTitle').textContent='Coverage on '+fmtDay(sd)+(sd!==day?' · picked in the week schedule':'');
+  $('tlTitle').textContent='Coverage on '+fmtDay(sd);
   let tl='<div class="tl"><div class="row"><div></div><div class="hours">';
   for(let h=7;h<=21;h+=2) tl+=`<span style="left:${pct(h*60)}%">${t12(String(h).padStart(2,'0')+':00')}</span>`;
   tl+='</div></div>';
