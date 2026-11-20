@@ -1006,7 +1006,8 @@ function render(day){
 
   // ---- week ----
   const rdays=Object.keys(CFG.roster).sort();
-  const wk=rdays.filter(d=>Math.abs(dparts(d)-dparts(day))<7*864e5);
+  const wkStart=addDays(day,-((dparts(day).getUTCDay()+6)%7));   // Monday of the selected week, then every roster day after it (up to 15 days)
+  const wk=rdays.filter(d=>d>=wkStart&&d<=addDays(wkStart,14));
   const weekDays=wk.length?wk:rdays.slice(-7);
   $('weekSub').textContent='From the Pawkit CS Team Schedule Tracker, week of '+fmtDay(weekDays[0])+' to '+fmtDay(weekDays[weekDays.length-1])+'.';
   $('week').innerHTML='<tr><th>Name</th>'+weekDays.map(d=>`<th class="${d===day?'today':''}">${fmtDay(d).replace(/ \w+$/,'')}</th>`).join('')+'</tr>'+
